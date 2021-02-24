@@ -63,6 +63,13 @@ int main() {
 }
 
 /**
+ * Runs a health check to ensure all systems are working properly. Tests all sensors, iridium modem connection / transmission, etc.
+ */
+void system_health_check() {
+
+}
+
+/**
  * Run continuously during normal flight. Performs
  * 1. Iridium Modem Startup Sequence
  * 2. Sensor Polling and Data Collection
@@ -94,6 +101,10 @@ void flight_loop() {
     } 
 
     delay(100);
+
+    // TODO "Smart Sleep": where the system time is clocked on wakeup
+    // then we wait till 30 sec has passed (during that time do sensor collection / averaging, and packaging)
+    // and finally when the time has passed, transmit that data.
 
 }
 

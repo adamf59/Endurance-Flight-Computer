@@ -1,10 +1,12 @@
 #ifndef FLIGHT_DATA_H
 #define FLIGHT_DATA_H
 
+    #include <stdint.h>
+
     namespace FLIGHT_DATA {
 
         // data to be sent:
-        static char outboundData[50] = {0};  // we are limiting these to 50 bytes per the iridium credit limit
+        static uint8_t outboundData[52] = {0};  // 50 byte / credit + 2 for checksum
         
         // data we get from iridium network OR GroundLink
         static char inboundData[50] = {0};
