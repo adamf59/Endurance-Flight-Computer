@@ -10,6 +10,18 @@
         
         // data we get from iridium network OR GroundLink
         static char inboundData[50] = {0};
+
+        /** Bitfield indicies:
+         * 0 - Iridium Modem Status
+         * 1 - External Temperature Status
+         * 2 - DHT22 Sensor Status
+         * 3 - BME280 Sensor Status
+         * 4 - INA219 Sensor Status
+         * 5 - BMP280 Sensor Status
+         * 6 - MPL3115A2 Sensor Status
+         * 7 - Flight Computer System Status
+         */
+        static uint8_t hardware_status_bitfield = 0b00000000;
         
         // check number we get from an RX-message (here) to send in the next TX
         static int checkNum = 0;

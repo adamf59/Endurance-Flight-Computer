@@ -3,7 +3,7 @@
  * Written by Adam Frank
  * 2/21/2021
  * 
- * #define FLIGHT_MODE to configure the software for flight mode
+ * #define FLIGHT_MODE to configure the firmware for flight mode
  */
 
 #include <Arduino.h>
@@ -22,10 +22,10 @@ int main() {
     init();
 
     // Perform any startup setup:
-    
-    // GroundLink Serial
-    Serial.begin(9600);
 
+    // Communications Start
+    _com_init();
+    
     pinMode(_HW_PIN_STATUS_INDICATOR_LED, OUTPUT);
     pinMode(_HW_PIN_BALLAST_TRIGGER, OUTPUT);
     pinMode(_HW_PIN_IRIDIUM_MODEM_SLEEP, OUTPUT);
@@ -37,9 +37,14 @@ int main() {
         delay(150);
     }
 
+#ifndef FLIGHT_MODE
+    // GroundLink Serial
+    Serial.begin(19200);
     Serial.println("1"); // Send "startup complete" to GL
+#endif
+    
     // Perform Crash Check
-    // Crash byte stored at address 0, and is SET at 0xFF.
+    // Crash byte stored at address 0, and is SET at 0xFF, CLEAR at 0x00.
 
 #ifdef FLIGHT_MODE
         if (EEPROM.read(0x00) == 0xFF) {
@@ -54,11 +59,13 @@ int main() {
     // Perform Flight Data initialization
     fillArray(FLIGHT_DATA::inboundData, sizeof(FLIGHT_DATA::inboundData), 0);
 
+    // Perform startup system test
+    system_health_check();
 
     while (1) {
         flight_loop();
     }
-    
+
     return 0;
 }
 
@@ -66,6 +73,23 @@ int main() {
  * Runs a health check to ensure all systems are working properly. Tests all sensors, iridium modem connection / transmission, etc.
  */
 void system_health_check() {
+
+    // Check iridium modem connection:
+    if (!send_modem_command("AT\r", 50) == "OK") {
+        FLIGHT_DATA::hardware_status_bitfield &= ~(1UL << 0);
+    } else {
+        FLIGHT_DATA::hardware_status_bitfield |= 1UL << 0;
+    }
+
+        // Test sensors
+
+
+    #ifndef FLIGHT_MODE
+        // Echo result to groundlink
+            Serial.print(F("<$"));
+            Serial.print(FLIGHT_DATA::hardware_status_bitfield);
+            Serial.println(F(">"));
+    #endif
 
 }
 
@@ -80,32 +104,17 @@ void system_health_check() {
  */
 void flight_loop() {
 
-    // Check GroundLink for commands...
-    if (Serial.available()) {
+#ifndef FLIGHT_MODE
+    // Run GroundLink checks
+    gm_check_groundlink();    
+#endif
 
-        // We are only reading the first 50 bytes, then clearing the buffer.
-        // This is because the 50-byte = 1 credit limit of the iridium modem.
-        for (int i = 0; i < 50; i++) {
-            if (Serial.available() > 0) {
-                FLIGHT_DATA::inboundData[i] = Serial.read();
-            } else {
-                break;
-            }
-        }
-
-        Serial.println("Data read!");
-        Serial.println(FLIGHT_DATA::inboundData);
-        fillArray(FLIGHT_DATA::inboundData, 50, 0);
-        
-        
-    } 
 
     delay(100);
 
     // TODO "Smart Sleep": where the system time is clocked on wakeup
     // then we wait till 30 sec has passed (during that time do sensor collection / averaging, and packaging)
     // and finally when the time has passed, transmit that data.
-
 }
 
 /**

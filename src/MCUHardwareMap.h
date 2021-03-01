@@ -8,8 +8,8 @@
     #define _HW_PIN_EXTERNAL_TEMPERATURE_DATA   2
     #define _HW_PIN_DHT22_SENSOR_DATA           6
     #define _HW_PIN_IRIDIUM_MODEM_SLEEP         3
-    #define _HW_PIN_IRDIUM_MODEM_TRANSMIT       7
-    #define _HW_PIN_IRIDIUM_MODEM_RECEIVE       8
+    #define _HW_PIN_IRDIUM_MODEM_TRANSMIT       8
+    #define _HW_PIN_IRIDIUM_MODEM_RECEIVE       7
     #define _HW_PIN_BME280_CS                   10
     #define _HW_PIN_BALLAST_TRIGGER             9
 

@@ -2,6 +2,7 @@
 #include "Communications.h"
 #include "MCUHardwareMap.h"
 #include "FlightData.h"
+#include "jsfc.h"
 
 #include <SoftwareSerial.h>
 
@@ -9,14 +10,16 @@ SoftwareSerial iridiumModem(_HW_PIN_IRIDIUM_MODEM_RECEIVE, _HW_PIN_IRDIUM_MODEM_
 
 char iridiumRecieveBufferData[100];
 
-void processInboundData() {
+void _com_init() {
+    iridiumModem.begin(19200);
+}
+
+void process_inbound_data() {
     
 }
 
 void const flush_iridium_recieve_buffer() {
-    for (int i = 0; i < 100; i++) {
-        iridiumRecieveBufferData[i] = 0;
-    }
+    fillArray(iridiumRecieveBufferData, 100, 0);
 }
 
 /**
@@ -29,7 +32,7 @@ void const flush_iridium_serial_buffer() {
 /**
  * Sends a message to the iridium modem, and stores the response into iridiumRecieveBufferData
  */
-void send_modem_command(char transmission[], int read_timeout) {
+char* send_modem_command(char transmission[], int read_timeout) {
 
     // Clear the buffers
     flush_iridium_recieve_buffer();
@@ -38,15 +41,20 @@ void send_modem_command(char transmission[], int read_timeout) {
     // Write the transmission
     iridiumModem.write(transmission);
 
+    // Wait for the modem to respond
+    // TODO there may be a better way to do this.
     delay(read_timeout);
 
     int writeIdx = 0;
     // Read any data from the iridium modem
     while (iridiumModem.available()) {
+        if (writeIdx == 100) break;   // prevent buffer overflows
         char inChar = iridiumModem.read();
-        if (writeIdx++ == 100) break;   // prevent buffer overflows
-        if (inChar >= 32 && inChar <= 122)  iridiumRecieveBufferData[writeIdx] = inChar;
+        // only accepting ASCII letters, numbers, etc. (i.e. no control characters like \0, NL, CR, etc.)
+        if (inChar >= 32 && inChar <= 122)  iridiumRecieveBufferData[writeIdx++] = inChar;
     }
+
+    return iridiumRecieveBufferData;
     
 }
 
@@ -66,3 +74,25 @@ void compute_outbound_checksum() {
     FLIGHT_DATA::outboundData[51] = outbound_summation & 0xFF;
 }
 
+#ifndef FLIGHT_MODE
+void gm_check_groundlink() {
+    // Check groundlink for commands and run executor if commands found.
+
+    fillArray(FLIGHT_DATA::inboundData, 50, 0);
+
+    if (Serial.available()) {
+
+            // We are only reading the first 50 bytes, then clearing the buffer.
+            // This is because the 50-byte = 1 credit limit of the iridium modem.
+            for (int i = 0; i < 50; i++) {
+                if (Serial.available() > 0) {
+                    FLIGHT_DATA::inboundData[i] = Serial.read();
+                } else {
+                    break;
+                }
+            }
+            process_inbound_data();
+                    
+        }
+}
+#endif
