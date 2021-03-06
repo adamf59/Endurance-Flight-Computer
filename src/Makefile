@@ -6,6 +6,7 @@ ARDUINO_DIR = /Applications/Arduino.app/Contents/Java
 MONITOR_PORT  = /dev/cu.usbserial-14310
 AVRDUDE_ARD_BAUDRATE = 57600
 MONITOR_BAUDRATE = 9600
-# ARDUINO_LIBS = SoftwareSerial
+ARDUINO_LIBS = SoftwareSerial SPI Wire EEPROM AdafruitSensor AdafruitBME
+# ARDUINO_SKETCHBOOK = /Users/adamfrank/Documents/JagSat2021/jsfc_2021/libraries
 
 include /usr/local/Cellar/arduino-mk/1.6.0/Arduino.mk

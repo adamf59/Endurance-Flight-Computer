@@ -13,7 +13,7 @@
 #include "MCUHardwareMap.h"
 #include "FlightData.h"
 #include "Communications.h"
-
+#include "SensorSystem.h"
 
 
 int main() {
@@ -21,9 +21,11 @@ int main() {
     // Initialize the AVR Board:
     init();
 
-    // Perform any startup setup:
+    // Initialize sensor system
+    init_sensor_system();
+    
 
-    // Communications Start
+    // Initialize communications and iridium modem
     _com_init();
     
     pinMode(_HW_PIN_STATUS_INDICATOR_LED, OUTPUT);
@@ -62,6 +64,8 @@ int main() {
     // Perform startup system test
     system_health_check();
 
+    // Finally, enter the flight loop, which shouldn't ever really end.
+
     while (1) {
         flight_loop();
     }
@@ -71,6 +75,7 @@ int main() {
 
 /**
  * Runs a health check to ensure all systems are working properly. Tests all sensors, iridium modem connection / transmission, etc.
+ * Warning: This will use 1 credit if an antenna is connected to the iridum modem!
  */
 void system_health_check() {
 
@@ -81,8 +86,10 @@ void system_health_check() {
         FLIGHT_DATA::hardware_status_bitfield |= 1UL << 0;
     }
 
-        // Test sensors
+    // Send a test transmission to iridium modem
 
+
+    // Test sensors, compare results
 
     #ifndef FLIGHT_MODE
         // Echo result to groundlink
@@ -115,7 +122,20 @@ void flight_loop() {
     // TODO "Smart Sleep": where the system time is clocked on wakeup
     // then we wait till 30 sec has passed (during that time do sensor collection / averaging, and packaging)
     // and finally when the time has passed, transmit that data.
-}
+
+
+    /**
+     *  Start Iridium, and clock the system time (millis()). Begin collecting sensor data.
+     * Usually, we should let the sensors run for about 10 sec or so and collect multiple samples before taking some "real" measuremnts.
+     * Take 3 "real" measurements and average them. Then compare results with other sensors. If they match, we're good.
+     * 
+     * Now check to see if 30 seconds have passed. If so, continue with transmitting. Otherwise, wait.
+     * Once iridium is ready, perform a check to see if the modem is responding, and finally run the tx sequence.
+     * 
+     * All said and done, put the modem into sleep mode as well as the sensors. Finally, we power down and wait for the next wakeup.
+    */
+   
+    }
 
 /**
  * Clears the array pointed to by arr

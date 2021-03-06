@@ -11,6 +11,8 @@
         "string_view": "cpp",
         "unordered_map": "cpp",
         "vector": "cpp",
-        "istream": "cpp"
+        "istream": "cpp",
+        "wiring_private.h": "c",
+        "io.h": "c"
     }
 }
