@@ -12,6 +12,13 @@ char iridiumRecieveBufferData[100];
 
 void _com_init() {
     iridiumModem.begin(19200);
+
+#ifndef FLIGHT_MODE
+    // GroundLink Serial
+    Serial.begin(19200);
+    Serial.println(F("<ST_START>")); // Send "startup complete" to GL
+#endif
+
 }
 
 void process_inbound_data() {
@@ -48,12 +55,12 @@ char* send_modem_command(char transmission[], int read_timeout) {
     int writeIdx = 0;
     // Read any data from the iridium modem
     while (iridiumModem.available()) {
-        if (writeIdx == 100) break;   // prevent buffer overflows
+        if (writeIdx == sizeof(iridiumRecieveBufferData)) break;   // prevent buffer overflows
         char inChar = iridiumModem.read();
         // only accepting ASCII letters, numbers, etc. (i.e. no control characters like \0, NL, CR, etc.)
         if (inChar >= 32 && inChar <= 122)  iridiumRecieveBufferData[writeIdx++] = inChar;
     }
-
+    
     return iridiumRecieveBufferData;
     
 }

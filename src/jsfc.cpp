@@ -21,30 +21,14 @@ int main() {
     // Initialize the AVR Board:
     init();
 
-    // Initialize sensor system
-    init_sensor_system();
-    
-
     // Initialize communications and iridium modem
     _com_init();
-    
+
+    // Initialize IO    
     pinMode(_HW_PIN_STATUS_INDICATOR_LED, OUTPUT);
     pinMode(_HW_PIN_BALLAST_TRIGGER, OUTPUT);
     pinMode(_HW_PIN_IRIDIUM_MODEM_SLEEP, OUTPUT);
 
-    for (int i = 0; i < 5; i++) {
-        digitalWrite(_HW_PIN_STATUS_INDICATOR_LED, true);
-        delay(150);
-        digitalWrite(_HW_PIN_STATUS_INDICATOR_LED, false);
-        delay(150);
-    }
-
-#ifndef FLIGHT_MODE
-    // GroundLink Serial
-    Serial.begin(19200);
-    Serial.println("1"); // Send "startup complete" to GL
-#endif
-    
     // Perform Crash Check
     // Crash byte stored at address 0, and is SET at 0xFF, CLEAR at 0x00.
 
@@ -61,8 +45,21 @@ int main() {
     // Perform Flight Data initialization
     fillArray(FLIGHT_DATA::inboundData, sizeof(FLIGHT_DATA::inboundData), 0);
 
+    // Initialize sensor system
+    init_sensor_system();
+
     // Perform startup system test
     system_health_check();
+
+#ifndef FLIGHT_MODE
+    // LED Indications in Ground Mode
+    for (int i = 0; i < 5; i++) {
+        digitalWrite(_HW_PIN_STATUS_INDICATOR_LED, true);
+        delay(150);
+        digitalWrite(_HW_PIN_STATUS_INDICATOR_LED, false);
+        delay(150);
+    }
+#endif
 
     // Finally, enter the flight loop, which shouldn't ever really end.
 
@@ -80,21 +77,21 @@ int main() {
 void system_health_check() {
 
     // Check iridium modem connection:
-    if (!send_modem_command("AT\r", 50) == "OK") {
-        FLIGHT_DATA::hardware_status_bitfield &= ~(1UL << 0);
+
+    if (strcmp(send_modem_command("AT\r", 50), "OK") == 0) {
+        FLIGHT_DATA::hardware_status_bitfield |= (1UL << 0);    // SUCCESSFUL
     } else {
-        FLIGHT_DATA::hardware_status_bitfield |= 1UL << 0;
+        FLIGHT_DATA::hardware_status_bitfield &= ~(1UL << 0);   // UNSUCCESSFUL
     }
 
     // Send a test transmission to iridium modem
-
 
     // Test sensors, compare results
 
     #ifndef FLIGHT_MODE
         // Echo result to groundlink
-            Serial.print(F("<$"));
-            Serial.print(FLIGHT_DATA::hardware_status_bitfield);
+            Serial.print(F("<<<$"));
+            Serial.print(FLIGHT_DATA::hardware_status_bitfield, BIN);
             Serial.println(F(">"));
     #endif
 
