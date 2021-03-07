@@ -9,5 +9,6 @@
     float read_BME280();
 
     float _read_sen_dht22_temp();
+    float _read_sen_ds18b20_temp();
 
 #endif SENSOR_SYSTEM_H
