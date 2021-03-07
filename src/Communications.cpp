@@ -6,6 +6,9 @@
 
 #include <SoftwareSerial.h>
 
+#include <util/crc16.h>
+//http://ugweb.cs.ualberta.ca/~c274/resources/arduino-ua/avr-libc-1.7.1-overlay/avr-libc/avr-libc-user-manual-1.7.1/group__util__crc.html
+
 SoftwareSerial iridiumModem(_HW_PIN_IRIDIUM_MODEM_RECEIVE, _HW_PIN_IRDIUM_MODEM_TRANSMIT);
 
 char iridiumRecieveBufferData[100];
@@ -22,6 +25,7 @@ void _com_init() {
 }
 
 void process_inbound_data() {
+    
     
 }
 
@@ -60,7 +64,7 @@ char* send_modem_command(char transmission[], int read_timeout) {
         // only accepting ASCII letters, numbers, etc. (i.e. no control characters like \0, NL, CR, etc.)
         if (inChar >= 32 && inChar <= 122)  iridiumRecieveBufferData[writeIdx++] = inChar;
     }
-    
+
     return iridiumRecieveBufferData;
     
 }

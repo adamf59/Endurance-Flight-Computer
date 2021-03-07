@@ -11,6 +11,7 @@
     #define _HW_PIN_IRDIUM_MODEM_TRANSMIT       8
     #define _HW_PIN_IRIDIUM_MODEM_RECEIVE       7
     #define _HW_PIN_BME280_CS                   10
+    
     #define _HW_PIN_BALLAST_TRIGGER             9
 
     #define _HW_TYPE_DHT_22_SENSOR_TYPE          DHT22

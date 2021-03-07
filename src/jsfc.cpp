@@ -90,7 +90,7 @@ void system_health_check() {
 
     #ifndef FLIGHT_MODE
         // Echo result to groundlink
-            Serial.print(F("<<<$"));
+            Serial.print(F("<$"));
             Serial.print(FLIGHT_DATA::hardware_status_bitfield, BIN);
             Serial.println(F(">"));
     #endif

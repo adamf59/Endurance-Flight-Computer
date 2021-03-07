@@ -8,4 +8,6 @@
 
     float read_BME280();
 
+    float _read_sen_dht22_temp();
+
 #endif SENSOR_SYSTEM_H
