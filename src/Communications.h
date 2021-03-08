@@ -13,6 +13,10 @@
     void const flush_iridium_recieve_buffer();
     void const flush_iridium_serial_buffer();
 
+    void read_iridium_buffer();
+
+    bool transmit_outbound();
+
     #ifndef FLIGHT_MODE
         void gm_check_groundlink();
     #endif

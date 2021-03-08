@@ -4,11 +4,24 @@
     /**
      * Initializes all sensors defined
      */
-    bool init_sensor_system();
+    void init_sensor_system();
 
-    float read_BME280();
+    // Temperature Readings:
 
+    float _read_sen_bmp280_temp();
+    float _read_sen_mpl3115a2_temp();
     float _read_sen_dht22_temp();
     float _read_sen_ds18b20_temp();
+
+    // Pressure Readings
+
+    float _read_sen_bmp280_q();
+    float _read_sen_mpl3115a2_q();
+    float _read_sen_bme280_q();
+
+    // Humidity Readings
+
+    float _read_sen_bme280_rhumidity();
+    float _read_sen_dht22_rhumidity();
 
 #endif SENSOR_SYSTEM_H

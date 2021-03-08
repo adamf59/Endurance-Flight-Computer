@@ -4,7 +4,7 @@
  * 2/21/2021
  * 
  * #define FLIGHT_MODE to configure the firmware for flight mode
- */
+ */ 
 
 #include <Arduino.h>
 #include <EEPROM.h>
@@ -78,15 +78,29 @@ void system_health_check() {
 
     // Check iridium modem connection:
 
-    if (strcmp(send_modem_command("AT\r", 50), "OK") == 0) {
-        FLIGHT_DATA::hardware_status_bitfield |= (1UL << 0);    // SUCCESSFUL
-    } else {
-        FLIGHT_DATA::hardware_status_bitfield &= ~(1UL << 0);   // UNSUCCESSFUL
-    }
+    bool irid_status = strcmp(send_modem_command("AT\r", 50), "OK") == 0;
+
+    FLIGHT_DATA::set_hardware_bf_bit(0, irid_status);
 
     // Send a test transmission to iridium modem
 
+    Serial.println("Testing Transmission Capabilities");
+    uint8_t xxx[52] = {0x48}; // Fill the transmission with 'H'
+    memcpy(xxx, FLIGHT_DATA::outbound_data, sizeof(xxx));
+    
+    transmit_outbound();
+
     // Test sensors, compare results
+
+    Serial.println(_read_sen_bmp280_temp());
+    Serial.println(_read_sen_mpl3115a2_temp());
+    Serial.println(_read_sen_dht22_temp());
+    Serial.println(_read_sen_ds18b20_temp());
+    
+    Serial.println(_read_sen_bme280_q());
+    Serial.println(_read_sen_bmp280_q());
+    Serial.println(_read_sen_mpl3115a2_q());
+
 
     #ifndef FLIGHT_MODE
         // Echo result to groundlink

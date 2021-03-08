@@ -6,7 +6,8 @@
 
 #include <SoftwareSerial.h>
 
-#include <util/crc16.h>
+using namespace FLIGHT_DATA;
+
 //http://ugweb.cs.ualberta.ca/~c274/resources/arduino-ua/avr-libc-1.7.1-overlay/avr-libc/avr-libc-user-manual-1.7.1/group__util__crc.html
 
 SoftwareSerial iridiumModem(_HW_PIN_IRIDIUM_MODEM_RECEIVE, _HW_PIN_IRDIUM_MODEM_TRANSMIT);
@@ -27,6 +28,59 @@ void _com_init() {
 void process_inbound_data() {
     
     
+}
+
+bool transmit_outbound() {
+    // Start a session with the iridium modem:
+
+    // check connectivity
+    if (strcmp(send_modem_command("AT\r", 50), "OK\r") == 0) {
+        return false;
+    }
+
+    // disable flow control
+    if (strcmp(send_modem_command("AT&K0\r", 50), "OK\r") == 0) {
+        return false;
+    }
+
+    // request transfer of binary data to ISU
+    if (strcmp(send_modem_command("AT+SBDWB=50\r", 50), "READY\r") == 0) {
+        return false;
+    }
+
+    /*
+    * Compute the checksum of the data stored in FLIGHT_DATA::outboundData
+    * See docs at: https://docs.rockblock.rock7.com/reference#sbdwb
+    */
+    int outbound_summation = 0; // Max: (255 * 50) 12750 / 0x31CA / 00111001 11001110
+
+    for (int i = 0; i < 50; i++) {
+        outbound_summation += (int) FLIGHT_DATA::outbound_data[i];
+    }
+
+    FLIGHT_DATA::outbound_data[50] = (outbound_summation >> 8) & 0xFF;
+    FLIGHT_DATA::outbound_data[51] = outbound_summation & 0xFF;
+
+    flush_iridium_recieve_buffer();
+    flush_iridium_serial_buffer();
+
+    // transfer the binary data from FLIGHT_DATA::outbound_data
+    for (int _b = 0; _b < 52; _b++) {
+        iridiumModem.write((byte) outbound_data[_b]);
+    }
+
+    // now check to see that the ISU liked the data (should be 0OK)
+    delay(50);
+    read_iridium_buffer();
+    if (!strcmp(iridiumRecieveBufferData, "0OK\r")) {
+        return false;
+    }
+    
+    // Finally, initiate a short burst session:
+
+    // TODO do short burst session
+
+    return true;
 }
 
 void const flush_iridium_recieve_buffer() {
@@ -56,6 +110,14 @@ char* send_modem_command(char transmission[], int read_timeout) {
     // TODO there may be a better way to do this.
     delay(read_timeout);
 
+    read_iridium_buffer();
+
+    return iridiumRecieveBufferData;
+    
+}
+
+void read_iridium_buffer() {
+
     int writeIdx = 0;
     // Read any data from the iridium modem
     while (iridiumModem.available()) {
@@ -65,24 +127,6 @@ char* send_modem_command(char transmission[], int read_timeout) {
         if (inChar >= 32 && inChar <= 122)  iridiumRecieveBufferData[writeIdx++] = inChar;
     }
 
-    return iridiumRecieveBufferData;
-    
-}
-
-/*
- * Computes the checksum of the data stored in FLIGHT_DATA::outboundData
- * See docs at: https://docs.rockblock.rock7.com/reference#sbdwb
- */
-void compute_outbound_checksum() {
-
-    int outbound_summation = 0; // Max: (255 * 50) 12750 / 0x31CA / 00111001 11001110
-
-    for (int i = 0; i < 50; i++) {
-        outbound_summation += (int) FLIGHT_DATA::outboundData[i];
-    }
-
-    FLIGHT_DATA::outboundData[50] = (outbound_summation >> 8) & 0xFF;
-    FLIGHT_DATA::outboundData[51] = outbound_summation & 0xFF;
 }
 
 #ifndef FLIGHT_MODE

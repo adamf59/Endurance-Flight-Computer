@@ -4,7 +4,7 @@
 namespace FLIGHT_DATA {
 
     // data to be sent:
-    extern uint8_t outboundData[52] = {0};  // 50 byte / credit + 2 for checksum
+    extern uint8_t outbound_data[52] = {0};  // 50 byte / credit + 2 for checksum
         
     // data we get from iridium network OR GroundLink
     extern char inboundData[50] = {0};
@@ -26,5 +26,13 @@ namespace FLIGHT_DATA {
 
     // use 1013.2074 for standard atmospheric model, usually effective above FL180 (equivalent to 29.92 inHg)     
     extern float obd_sea_level_pressure_hpa = 1018.6097;
+
+    void set_hardware_bf_bit(int bit, bool to) {
+        if(to) {
+            FLIGHT_DATA::hardware_status_bitfield |= (1UL << bit);
+        } else {
+            FLIGHT_DATA::hardware_status_bitfield &= ~(1UL << bit);
+        }
+    }
 
 }

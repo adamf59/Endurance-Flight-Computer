@@ -5,7 +5,7 @@
 
     namespace FLIGHT_DATA {
 
-        extern uint8_t outboundData[52];
+        extern uint8_t outbound_data[52];
         
         extern char inboundData[50];
 
@@ -15,6 +15,7 @@
 
         extern float obd_sea_level_pressure_hpa;
 
+        void set_hardware_bf_bit(int bit, bool to);
     }
 
 #endif

@@ -19,63 +19,40 @@ Adafruit_INA219 _sen_ina219;
 DHT _sen_dht22(_HW_PIN_DHT22_SENSOR_DATA, _HW_TYPE_DHT_22_SENSOR_TYPE);
 OneWire _sen_ds18b20(_HW_PIN_EXTERNAL_TEMPERATURE_DATA);
 
-bool init_sensor_system() {
+void init_sensor_system() {
 
-    if(_sen_bme280.begin()) {
-        FLIGHT_DATA::hardware_status_bitfield |= (1UL << 3);
-    } else {
-        FLIGHT_DATA::hardware_status_bitfield &= ~(1UL << 3);
-    }
+    FLIGHT_DATA::set_hardware_bf_bit(3, _sen_bme280.begin());
 
-    if(_sen_bmp280.begin()) {
-        FLIGHT_DATA::hardware_status_bitfield |= (1UL << 5);
-        
-    } else {
-        FLIGHT_DATA::hardware_status_bitfield &= ~(1UL << 5);
-    }
+    FLIGHT_DATA::set_hardware_bf_bit(5, _sen_bmp280.begin());
 
-    if(_sen_mpl3115a2.begin()) {
-        FLIGHT_DATA::hardware_status_bitfield |= (1UL << 6);
-        
-    } else {
-        FLIGHT_DATA::hardware_status_bitfield &= ~(1UL << 6);
-    }
+    FLIGHT_DATA::set_hardware_bf_bit(6, _sen_mpl3115a2.begin());
 
-    if(_sen_ina219.begin()) {
-        FLIGHT_DATA::hardware_status_bitfield |= (1UL << 4);
-        
-    } else {
-        FLIGHT_DATA::hardware_status_bitfield &= ~(1UL << 4);
-    }
+    FLIGHT_DATA::set_hardware_bf_bit(4, _sen_ina219.begin());
 
-    //DHT22 Setup
     _sen_dht22.begin();
-    if (!isnan(_read_sen_dht22_temp())) {
-        FLIGHT_DATA::hardware_status_bitfield |= (1UL << 2);
-        
-    } else {
-        FLIGHT_DATA::hardware_status_bitfield &= ~(1UL << 2);
-    }
-
+    FLIGHT_DATA::set_hardware_bf_bit(2, !isnan(_read_sen_dht22_temp()));    
 
     return true;
-
 }
 
 //https://forum.mysensors.org/topic/7046/solved-bme280-power-consumtion/6
 
 
-/**
- * Read temperature data in celcius from the DHT22 sensor
- */
+// Temperature Readings
+
+float _read_sen_bmp280_temp() {
+    return _sen_bmp280.readTemperature();
+}
+
+float _read_sen_mpl3115a2_temp() {
+    return _sen_mpl3115a2.getTemperature();
+}
+
 float _read_sen_dht22_temp() {
   return _sen_dht22.readTemperature();
 }
 
-/**
- * Read temperature data from the DS18B20 Sensor in degrees celcius.
- * Note: For Endurance Flight Computer Rev. 1.0, this is the EXTERNAL TEMPERATURE SENSOR.
- */
+/* (External Temperature) */
 float _read_sen_ds18b20_temp() {
 
   byte data[12];
@@ -120,4 +97,18 @@ float _read_sen_ds18b20_temp() {
   
   return TemperatureSum;
   
+}
+
+// Pressure Readings
+
+float _read_sen_bmp280_q() {
+    return _sen_bmp280.readPressure() / 3386;
+}
+
+float _read_sen_mpl3115a2_q() {
+    return _sen_mpl3115a2.getPressure();
+}
+
+float _read_sen_bme280_q() {
+    return _sen_bme280.readPressure() / 3386;
 }
