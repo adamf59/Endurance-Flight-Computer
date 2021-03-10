@@ -7,7 +7,7 @@ namespace FLIGHT_DATA {
     extern uint8_t outbound_data[52] = {0};  // 50 byte / credit + 2 for checksum
         
     // data we get from iridium network OR GroundLink
-    extern char inboundData[50] = {0};
+    extern char inbound_data[50] = {0};
 
     /** Bitfield indicies:
      * 0 - Iridium Modem Status
@@ -22,7 +22,7 @@ namespace FLIGHT_DATA {
     extern uint8_t hardware_status_bitfield = 0b00000000;
     
     // check number we get from an RX-message (here) to send in the next TX
-    extern int checkNum = 0;
+    extern int rx_check_num = 0;
 
     // use 1013.2074 for standard atmospheric model, usually effective above FL180 (equivalent to 29.92 inHg)     
     extern float obd_sea_level_pressure_hpa = 1018.6097;

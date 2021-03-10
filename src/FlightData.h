@@ -7,11 +7,11 @@
 
         extern uint8_t outbound_data[52];
         
-        extern char inboundData[50];
+        extern char inbound_data[50];
 
         extern uint8_t hardware_status_bitfield;
         
-        extern int checkNum ;
+        extern int rx_check_num ;
 
         extern float obd_sea_level_pressure_hpa;
 

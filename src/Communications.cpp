@@ -27,14 +27,13 @@ void _com_init() {
 
 void process_inbound_data() {
     
-    
 }
 
 bool transmit_outbound() {
     // Start a session with the iridium modem:
 
     // check connectivity
-    if (strcmp(send_modem_command("AT\r", 50), "OK\r") == 0) {
+    if (!check_iridium_ready()) {
         return false;
     }
 
@@ -47,7 +46,6 @@ bool transmit_outbound() {
     if (strcmp(send_modem_command("AT+SBDWB=50\r", 50), "READY\r") == 0) {
         return false;
     }
-
     /*
     * Compute the checksum of the data stored in FLIGHT_DATA::outboundData
     * See docs at: https://docs.rockblock.rock7.com/reference#sbdwb
@@ -94,6 +92,10 @@ void const flush_iridium_serial_buffer() {
     while (iridiumModem.available() > 0)    iridiumModem.read();
 }
 
+bool check_iridium_ready() {
+    return strcmp(send_modem_command("AT\r", 50), "OK") == 0;
+}
+
 /**
  * Sends a message to the iridium modem, and stores the response into iridiumRecieveBufferData
  */
@@ -133,7 +135,7 @@ void read_iridium_buffer() {
 void gm_check_groundlink() {
     // Check groundlink for commands and run executor if commands found.
 
-    fillArray(FLIGHT_DATA::inboundData, 50, 0);
+    fillArray(FLIGHT_DATA::inbound_data, 50, 0);
 
     if (Serial.available()) {
 
@@ -141,7 +143,7 @@ void gm_check_groundlink() {
             // This is because the 50-byte = 1 credit limit of the iridium modem.
             for (int i = 0; i < 50; i++) {
                 if (Serial.available() > 0) {
-                    FLIGHT_DATA::inboundData[i] = Serial.read();
+                    FLIGHT_DATA::inbound_data[i] = Serial.read();
                 } else {
                     break;
                 }

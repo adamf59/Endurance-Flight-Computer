@@ -13,6 +13,8 @@
     void const flush_iridium_recieve_buffer();
     void const flush_iridium_serial_buffer();
 
+    bool check_iridium_ready();
+
     void read_iridium_buffer();
 
     bool transmit_outbound();

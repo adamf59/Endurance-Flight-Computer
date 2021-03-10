@@ -43,7 +43,7 @@ int main() {
 #endif
     
     // Perform Flight Data initialization
-    fillArray(FLIGHT_DATA::inboundData, sizeof(FLIGHT_DATA::inboundData), 0);
+    fillArray(FLIGHT_DATA::inbound_data, sizeof(FLIGHT_DATA::inbound_data), 0);
 
     // Initialize sensor system
     init_sensor_system();
@@ -78,29 +78,13 @@ void system_health_check() {
 
     // Check iridium modem connection:
 
-    bool irid_status = strcmp(send_modem_command("AT\r", 50), "OK") == 0;
-
-    FLIGHT_DATA::set_hardware_bf_bit(0, irid_status);
+    FLIGHT_DATA::set_hardware_bf_bit(0, check_iridium_ready());
 
     // Send a test transmission to iridium modem
 
-    Serial.println("Testing Transmission Capabilities");
-    uint8_t xxx[52] = {0x48}; // Fill the transmission with 'H'
-    memcpy(xxx, FLIGHT_DATA::outbound_data, sizeof(xxx));
-    
-    transmit_outbound();
+    // transmit_outbound();
 
     // Test sensors, compare results
-
-    Serial.println(_read_sen_bmp280_temp());
-    Serial.println(_read_sen_mpl3115a2_temp());
-    Serial.println(_read_sen_dht22_temp());
-    Serial.println(_read_sen_ds18b20_temp());
-    
-    Serial.println(_read_sen_bme280_q());
-    Serial.println(_read_sen_bmp280_q());
-    Serial.println(_read_sen_mpl3115a2_q());
-
 
     #ifndef FLIGHT_MODE
         // Echo result to groundlink
@@ -110,6 +94,11 @@ void system_health_check() {
     #endif
 
 }
+
+system_state fcpu_lifecycle_state = STARTUP;
+bool iridum_modem_ready = false;
+bool sensor_system_ready = false;
+long iridium_modem_startup_time = 0L;
 
 /**
  * Run continuously during normal flight. Performs
@@ -122,18 +111,66 @@ void system_health_check() {
  */
 void flight_loop() {
 
-#ifndef FLIGHT_MODE
-    // Run GroundLink checks
-    gm_check_groundlink();    
-#endif
+// #ifndef FLIGHT_MODE
+//     // Run GroundLink checks
+//     gm_check_groundlink();    
+// #endif
+    switch (fcpu_lifecycle_state) {
+        case STARTUP:
+            Serial.println("System in Startup...");
+            iridium_modem_startup_time = millis();
+            digitalWrite(_HW_PIN_IRIDIUM_MODEM_SLEEP, 1);   // First, wakeup the Iridium Modem
+            fcpu_lifecycle_state = POLL_WAIT_IRIDIUM;
+            break;
+        case POLL_WAIT_IRIDIUM:
+            // Wakeup the sensors... Begin polling for data.
 
+            // Take a few samples to ensure the data is "accurate"
+            if (!sensor_system_ready) {
+                Serial.println("Sampling...");
+                Serial.println(_read_sen_bmp280_temp());
+                Serial.println(_read_sen_mpl3115a2_temp());
+                Serial.println(_read_sen_dht22_temp());
+                Serial.println(_read_sen_ds18b20_temp());
+                Serial.println(_read_sen_bme280_q());
+                Serial.println(_read_sen_bmp280_q());
+                Serial.println(_read_sen_mpl3115a2_q());
 
-    delay(100);
+                delay(1200);    // wait a bit to retake measurements (so we're not spamming the sensor)
+                sensor_system_ready = true;     // (Development Only)
+            }
 
+            // Check if iridium is ready...
+            if (!iridum_modem_ready && check_iridium_ready()) {
+                iridum_modem_ready = true;
+                Serial.println("Iridium Modem Ready!...");
+            } else {
+                if (sensor_system_ready)   delay(1200);     // Continue delaying if the sensor system is ready.
+            }
+            
+            if (sensor_system_ready && iridum_modem_ready)      fcpu_lifecycle_state = TX_RX;
+
+            break;
+        case TX_RX:
+            Serial.println("Transmission in progress...");
+            delay(4000);
+            fcpu_lifecycle_state = LOW_POWER_SLEEP;
+            break;
+        case LOW_POWER_SLEEP:
+            Serial.println("Transitioning to sleep mode...");
+            iridum_modem_ready = false;
+            sensor_system_ready = false;
+            digitalWrite(_HW_PIN_IRIDIUM_MODEM_SLEEP, 0);
+            fcpu_lifecycle_state = STARTUP;
+            delay(15000);
+            break;
+    }
+
+    
     // TODO "Smart Sleep": where the system time is clocked on wakeup
     // then we wait till 30 sec has passed (during that time do sensor collection / averaging, and packaging)
     // and finally when the time has passed, transmit that data.
-
+    
 
     /**
      *  Start Iridium, and clock the system time (millis()). Begin collecting sensor data.
@@ -145,6 +182,7 @@ void flight_loop() {
      * 
      * All said and done, put the modem into sleep mode as well as the sensors. Finally, we power down and wait for the next wakeup.
     */
+
    
     }
 
