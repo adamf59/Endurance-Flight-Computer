@@ -26,9 +26,10 @@ int main() {
 
     // Initialize IO    
     pinMode(_HW_PIN_STATUS_INDICATOR_LED, OUTPUT);
-    pinMode(_HW_PIN_BALLAST_TRIGGER, OUTPUT);
+    // pinMode(_HW_PIN_BALLAST_TRIGGER, OUTPUT);
     pinMode(_HW_PIN_IRIDIUM_MODEM_SLEEP, OUTPUT);
-
+    pinMode(_HW_PIN_VISIBILITY_STROBE_LED, OUTPUT);
+    
     // Perform Crash Check
     // Crash byte stored at address 0, and is SET at 0xFF, CLEAR at 0x00.
 
@@ -43,7 +44,7 @@ int main() {
 #endif
     
     // Perform Flight Data initialization
-    fillArray(FLIGHT_DATA::inbound_data, sizeof(FLIGHT_DATA::inbound_data), 0);
+    memset(FLIGHT_DATA::inbound_data, 0, sizeof(FLIGHT_DATA::inbound_data));
 
     // Initialize sensor system
     init_sensor_system();
@@ -55,15 +56,23 @@ int main() {
     // LED Indications in Ground Mode
     for (int i = 0; i < 5; i++) {
         digitalWrite(_HW_PIN_STATUS_INDICATOR_LED, true);
+        digitalWrite(_HW_PIN_VISIBILITY_STROBE_LED, true);
         delay(150);
         digitalWrite(_HW_PIN_STATUS_INDICATOR_LED, false);
+        digitalWrite(_HW_PIN_VISIBILITY_STROBE_LED, false);
         delay(150);
     }
 #endif
 
+    // Enable Strobes
+    set_strobes(true);
+
     // Finally, enter the flight loop, which shouldn't ever really end.
 
     while (1) {
+        // set_strobes(false);
+        // delay(2000);
+        // set_strobes(true);
         flight_loop();
     }
 
@@ -86,12 +95,10 @@ void system_health_check() {
 
     // Test sensors, compare results
 
-    #ifndef FLIGHT_MODE
-        // Echo result to groundlink
-            Serial.print(F("<$"));
-            Serial.print(FLIGHT_DATA::hardware_status_bitfield, BIN);
-            Serial.println(F(">"));
-    #endif
+
+    Serial.print(FLIGHT_DATA::hardware_status_bitfield, BIN);
+    Serial.print("\nDSI8B20 Temperature:");
+    Serial.println(_read_sen_dht22_temp());
 
 }
 
@@ -111,60 +118,94 @@ long iridium_modem_startup_time = 0L;
  */
 void flight_loop() {
 
-// #ifndef FLIGHT_MODE
-//     // Run GroundLink checks
-//     gm_check_groundlink();    
-// #endif
-    switch (fcpu_lifecycle_state) {
-        case STARTUP:
-            Serial.println("System in Startup...");
-            iridium_modem_startup_time = millis();
-            digitalWrite(_HW_PIN_IRIDIUM_MODEM_SLEEP, 1);   // First, wakeup the Iridium Modem
-            fcpu_lifecycle_state = POLL_WAIT_IRIDIUM;
-            break;
-        case POLL_WAIT_IRIDIUM:
-            // Wakeup the sensors... Begin polling for data.
+    gm_check_groundlink();
+    delay(500);
 
-            // Take a few samples to ensure the data is "accurate"
-            if (!sensor_system_ready) {
-                Serial.println("Sampling...");
-                Serial.println(_read_sen_bmp280_temp());
-                Serial.println(_read_sen_mpl3115a2_temp());
-                Serial.println(_read_sen_dht22_temp());
-                Serial.println(_read_sen_ds18b20_temp());
-                Serial.println(_read_sen_bme280_q());
-                Serial.println(_read_sen_bmp280_q());
-                Serial.println(_read_sen_mpl3115a2_q());
+// // #ifndef FLIGHT_MODE
+// //     // Run GroundLink checks
+// //     gm_check_groundlink();    
+// // #endif
+//     switch (fcpu_lifecycle_state) {
+//         case STARTUP:
+//             //Serial.println(F("FCPU in Startup..."));
+//             iridium_modem_startup_time = millis();
+//             digitalWrite(_HW_PIN_IRIDIUM_MODEM_SLEEP, 1);   // First, wakeup the Iridium Modem
+//             fcpu_lifecycle_state = POLL_WAIT_IRIDIUM;
+//             break;
+//         case POLL_WAIT_IRIDIUM:
+//             // Wakeup the sensors... Begin polling for data.
 
-                delay(1200);    // wait a bit to retake measurements (so we're not spamming the sensor)
-                sensor_system_ready = true;     // (Development Only)
-            }
+//             // Take a few samples to ensure the data is "accurate"
+//             if (!sensor_system_ready) {
+//                 // Serial.println("Sampling...");
+//                 // Serial.println(_read_sen_bmp280_temp());
+//                 // Serial.println(_read_sen_mpl3115a2_temp());
+//                 // Serial.println(_read_sen_dht22_temp());
+//                 // Serial.println(_read_sen_ds18b20_temp());
+//                 // Serial.println(_read_sen_bme280_q());
+//                 // Serial.println(_read_sen_bmp280_q());
+//                 // Serial.println(_read_sen_mpl3115a2_q());
 
-            // Check if iridium is ready...
-            if (!iridum_modem_ready && check_iridium_ready()) {
-                iridum_modem_ready = true;
-                Serial.println("Iridium Modem Ready!...");
-            } else {
-                if (sensor_system_ready)   delay(1200);     // Continue delaying if the sensor system is ready.
-            }
+//                 delay(1200);    // wait a bit to retake measurements (so we're not spamming the sensor)
+//                 sensor_system_ready = true;     // (Development Only)
+//             }
+
+//             // Check if iridium is ready...
+//             if (!iridum_modem_ready && check_iridium_ready()) {
+//                 iridum_modem_ready = true;
+//                 //Serial.println(F("Iridium Modem Startup Complete!..."));
+//             } else {
+//                 if (sensor_system_ready)   delay(1200);     // Continue delaying if the sensor system is ready.
+//             }
             
-            if (sensor_system_ready && iridum_modem_ready)      fcpu_lifecycle_state = TX_RX;
+//             if (sensor_system_ready && iridum_modem_ready)      fcpu_lifecycle_state = TX_RX;
 
-            break;
-        case TX_RX:
-            Serial.println("Transmission in progress...");
-            delay(4000);
-            fcpu_lifecycle_state = LOW_POWER_SLEEP;
-            break;
-        case LOW_POWER_SLEEP:
-            Serial.println("Transitioning to sleep mode...");
-            iridum_modem_ready = false;
-            sensor_system_ready = false;
-            digitalWrite(_HW_PIN_IRIDIUM_MODEM_SLEEP, 0);
-            fcpu_lifecycle_state = STARTUP;
-            delay(15000);
-            break;
-    }
+//             break;
+//         case TX_RX:
+//             //Serial.println("Attempting Iridium Transmission / GL");
+
+//             // char  COLD_TEST_TMP_OBA[210];
+//             // fillArray(COLD_TEST_TMP_OBA, 210, 0);
+
+//             // sprintf(COLD_TEST_TMP_OBA, "<%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i>",
+//             // (int)(_read_sen_bmp280_temp() * 100),
+//             // // (int)(_read_sen_bme280_temp() * 100),
+//             // 0,
+//             // (int)(_read_sen_mpl3115a2_temp() * 100),
+//             // (int)(_read_sen_dht22_temp() * 100),
+//             // (int)(_read_sen_ds18b20_temp() * 100),
+
+//             // (int)(_read_sen_bmp280_q() * 100),
+//             // // (int)(_read_sen_bme280_q() * 100),
+//             // 0,
+//             // (int)(_read_sen_mpl3115a2_q() * 100),
+
+//             // // (int)_read_sen_bme280_rhumidity(),
+//             // 0,
+//             // (int)_read_sen_dht22_rhumidity(),
+
+//             // (int)(_read_sen_ina219_voltage() * 100),
+//             // (int)_read_sen_ina219_current()
+            
+//             // );
+
+//             // Serial.println(COLD_TEST_TMP_OBA);
+            
+
+//             digitalWrite(_HW_PIN_BALLAST_TRIGGER, HIGH);
+//             delay(4000);
+//             digitalWrite(_HW_PIN_BALLAST_TRIGGER, LOW);
+//             fcpu_lifecycle_state = LOW_POWER_SLEEP;
+//             break;
+//         case LOW_POWER_SLEEP:
+//             //Serial.println("Transitioning to sleep mode...");
+//             iridum_modem_ready = false;
+//             sensor_system_ready = false;
+//             digitalWrite(_HW_PIN_IRIDIUM_MODEM_SLEEP, 0);
+//             fcpu_lifecycle_state = STARTUP;
+//             delay(240000);
+//             break;
+//     }
 
     
     // TODO "Smart Sleep": where the system time is clocked on wakeup
@@ -186,11 +227,16 @@ void flight_loop() {
    
     }
 
-/**
- * Clears the array pointed to by arr
- */
-void fillArray(char* arr, size_t arr_size, int val) {
-    for (size_t i = 0; i < arr_size; i++) {
-            arr[i] = val;
-        }
+void set_strobes(bool state) {
+    if(state) {
+        // Strobe LED Setup for 1Hz Flash, 10% Duty Cycle
+        TCCR1A = _BV(COM1A1) | _BV(WGM11);                
+        TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS12);     
+        ICR1 = 62499;                                     
+        OCR1A = 3000;   // Se   t the duty-cycle to 10%: 62499 / 10 = 6249
+        FLIGHT_DATA::strobe_light_status = 1;
+    } else {
+        digitalWrite(_HW_PIN_VISIBILITY_STROBE_LED, LOW);
+        FLIGHT_DATA::strobe_light_status = 0;
+    }
 }

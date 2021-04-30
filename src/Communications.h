@@ -6,7 +6,7 @@
      */
     void _com_init();
 
-
+    void collect_data_for_tx();
     void process_inbound_data();
     void compute_outbound_checksum();
     char* send_modem_command(char transmission[], int read_timeout);
