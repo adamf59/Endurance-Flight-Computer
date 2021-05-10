@@ -5,6 +5,12 @@
 
 namespace FLIGHT_DATA {
 
+    /**
+     * System Mode 0 = Ground Mode (instant command response w/ rapid sensor polling)
+     * System Mode 1 = Flight Mode (Regular interval sensor polling w/ timed iridium transmissions)
+     */
+    extern uint8_t system_mode = 0;
+
     // data to be sent:
     extern uint8_t outbound_data[52] = {0};  // 50 byte / credit + 2 for checksum
         
@@ -12,6 +18,14 @@ namespace FLIGHT_DATA {
     extern uint8_t inbound_data[50] = {0};
 
     extern char iridiumRecieveBufferData[65] = {0};
+
+    // Schedulers
+
+        extern uint16_t ballast_ap_interval = 420;      // Default: 7 minutes
+        extern uint32_t ballast_ap_scheduled_time = 0;  // Default 
+
+        extern uint16_t iridium_transmit_interval = 420;
+        extern uint32_t iridium_transmission_scheduled_time = 0;
 
 
     /** Bitfield indicies:
@@ -26,7 +40,10 @@ namespace FLIGHT_DATA {
      */
     extern uint8_t hardware_status_bitfield = 0b00000000;
 
+    // Iridium States
+
     extern uint8_t force_transmission = 0;
+    extern uint8_t last_transmission_status = 0;
 
     extern uint8_t iridium_mt_queued = 0;
 
@@ -37,9 +54,6 @@ namespace FLIGHT_DATA {
     // check number we get from an RX-message (here) to send in the next TX
     extern uint8_t rx_check_num = 0;
     
-    // Time between ballast evaluations and transmissions in seconds. default 7 minutes (420 seconds)
-    extern uint16_t fcpu_update_interval = 10;
-
     // use 101321 for standard atmospheric model, usually effective above FL180 (equivalent to 29.92 inHg)     
     extern uint32_t sea_level_pressure_pascals = 101321;
     

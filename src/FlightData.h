@@ -5,17 +5,33 @@
 
     namespace FLIGHT_DATA {
 
+        // System Mode
+
+        extern uint8_t system_mode;
+
+        // Buffers
+
         extern uint8_t outbound_data[52];
         
         extern uint8_t inbound_data[50];
 
         extern char iridiumRecieveBufferData[65];
 
+
         extern uint8_t iridium_mt_queued;
 
-        extern uint16_t fcpu_update_interval;
+        // Schedulers
+
+        extern uint16_t ballast_ap_interval;
+        extern uint32_t ballast_ap_scheduled_time;
+
+        extern uint16_t iridium_transmit_interval;
+        extern uint32_t iridium_transmission_scheduled_time;
+
+        // Iridium States
 
         extern uint8_t force_transmission;
+        extern uint8_t last_transmission_status;
 
         extern uint8_t hardware_status_bitfield;
 

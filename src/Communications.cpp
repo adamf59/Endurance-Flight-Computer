@@ -70,6 +70,8 @@ void collect_data_for_tx() {
     outbound_data[7] = (uint8_t) sea_level_temperature & 0xFF;
     outbound_data[8] = (uint8_t) (sea_level_temperature >> 8) & 0xFF;
 
+    outbound_data[9] = last_transmission_status;
+
     // Temperatures:
     outbound_data[10] = (uint8_t) bme280_temperature_measurement & 0xFF;
     outbound_data[11] = (uint8_t) (bme280_temperature_measurement >> 8);
@@ -139,11 +141,13 @@ void process_inbound_data() {
 
             // Set Mode
             if (inbound_data[i + 1] == 0x01) {
-                // set mode to standby
+                // set mode to ground_mode
+                system_mode = 0;
             } else if (inbound_data[i + 1] == 0x02) {
                 // set mode to terminal_count
             } else if (inbound_data[i + 2] == 0x03) {
                 // set mode to flight
+                system_mode = 1;
             }
             i += 1;
         } else if (inbound_data[i] == 0x02) {
@@ -161,7 +165,7 @@ void process_inbound_data() {
         } else if (inbound_data[i] == 0x04) {
 
             // Set Ballast Evaluation Period
-            fcpu_update_interval = (inbound_data[i + 2] << 8) | inbound_data[i + 1];
+            ballast_ap_interval = (inbound_data[i + 2] << 8) | inbound_data[i + 1];
             i += 2;
             
         } else if (inbound_data[i] == 0x05) {
@@ -349,6 +353,29 @@ uint8_t transmit_outbound() {
 
 
     return (data_waiting == 2) ? 2 : 1;
+}
+
+void run_iridium_tx_rx_sequence() {
+    
+    do {
+        uint8_t tx_status = 0;
+        for (int i = 0; i < 3; i++) {
+            tx_status = transmit_outbound();
+            if (tx_status != 0) break;
+        }
+        last_transmission_status = tx_status;
+
+        if (tx_status == 2) {
+            // read data from modem
+            send_modem_command("AT+SBDRB\r", 100);
+            memcpy(FLIGHT_DATA::inbound_data, &FLIGHT_DATA::iridiumRecieveBufferData[3], 50);
+            process_inbound_data();
+        } else {
+            FLIGHT_DATA::force_transmission = 0; // If no data is waiting, then obviously we don't need to transmit again.
+        }
+
+    } while(FLIGHT_DATA::force_transmission);
+
 }
 
 void const flush_iridium_recieve_buffer() {

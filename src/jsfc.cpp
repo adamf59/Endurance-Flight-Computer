@@ -81,7 +81,6 @@ void system_health_check() {
 
 }
 
-// system_state fcpu_lifecycle_state = STARTUP;
 // bool iridum_modem_ready = false;
 // bool sensor_system_ready = false;
 // long iridium_modem_startup_time = 0L;
@@ -97,29 +96,41 @@ void system_health_check() {
  */
 void flight_loop() {
 
+    // Run Data Collector
     collect_data_for_tx();
-    // transmit_outbound(1);
-    // gm_check_groundlink();
 
-    do {
-        uint8_t tx_status = 0;
-        for (int i = 0; i < 3; i++) {
-            tx_status = transmit_outbound();
-            if (tx_status != 0) break;
+    if (FLIGHT_DATA::system_mode == 0) {
+
+        // Check Groundlink for commands
+        gm_check_groundlink();
+        if (FLIGHT_DATA::force_transmission) {
+            run_iridium_tx_rx_sequence();
+            
+            // Also, lets transmit to groundlink:
+            for (uint8_t i = 0; i < 50; i++) {
+                Serial.write(FLIGHT_DATA::outbound_data[i]);
+            }
         }
 
-        if (tx_status == 2) {
-            // read data from modem
-            send_modem_command("AT+SBDRB\r", 100);
-            memcpy(FLIGHT_DATA::inbound_data, &FLIGHT_DATA::iridiumRecieveBufferData[3], 50);
-            process_inbound_data();
-        } else {
-            FLIGHT_DATA::force_transmission = 0; // If no data is waiting, then obviously we don't need to transmit again.
+    } else if (FLIGHT_DATA::system_mode == 1) {
+
+        // CHECK SCHEDULERS:
+        if (millis() >= FLIGHT_DATA::iridium_transmission_scheduled_time) {
+            FLIGHT_DATA::iridium_transmission_scheduled_time = millis() + (FLIGHT_DATA::iridium_transmit_interval * 1000); // set next target time
+
+            // Run Transmission Sequence
+            run_iridium_tx_rx_sequence();
         }
 
-    } while(FLIGHT_DATA::force_transmission);
+        if (millis() >= FLIGHT_DATA::ballast_ap_scheduled_time) {
+            FLIGHT_DATA::ballast_ap_scheduled_time = millis() + (FLIGHT_DATA::ballast_ap_interval * 1000); // set next target time
 
-    delay(1000);
+            // TODO run ballast run sequence
+        }
+
+        
+        
+    }
     
 // // #ifndef FLIGHT_MODE
 // //     // Run GroundLink checks

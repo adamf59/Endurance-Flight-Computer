@@ -6,12 +6,5 @@
     void flight_loop();
 
     void set_strobes(bool state);
-
-    enum system_state {
-        STARTUP, POLL_WAIT_IRIDIUM, TX_RX, LOW_POWER_SLEEP
-    };
-
-
-
     
 #endif
