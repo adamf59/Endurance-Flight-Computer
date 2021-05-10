@@ -16,7 +16,7 @@ Adafruit_BME280 _sen_bme280(_HW_PIN_BME280_CS);
 Adafruit_BMP280 _sen_bmp280;
 Adafruit_MPL3115A2 _sen_mpl3115a2;
 Adafruit_INA260 _sen_ina260;
-DHT _sen_dht22(_HW_PIN_DHT22_SENSOR_DATA, _HW_TYPE_DHT_22_SENSOR_TYPE);
+//DHT _sen_dht22(_HW_PIN_DHT22_SENSOR_DATA, _HW_TYPE_DHT_22_SENSOR_TYPE);
 OneWire _sen_ds18b20(_HW_PIN_EXTERNAL_TEMPERATURE_DATA);
 
 void init_sensor_system() {
@@ -29,8 +29,8 @@ void init_sensor_system() {
 
     FLIGHT_DATA::set_hardware_bf_bit(4, _sen_ina260.begin());
 
-    _sen_dht22.begin();
-    FLIGHT_DATA::set_hardware_bf_bit(2, !isnan(_read_sen_dht22_temp()));
+    // _sen_dht22.begin();
+    //FLIGHT_DATA::set_hardware_bf_bit(2, !isnan(_read_sen_dht22_temp()));
     
     FLIGHT_DATA::set_hardware_bf_bit(1, !isnan(_read_sen_ds18b20_temp()));    
 
@@ -54,9 +54,9 @@ float _read_sen_mpl3115a2_temp() {
     return _sen_mpl3115a2.getTemperature();
 }
 
-float _read_sen_dht22_temp() {
-  return _sen_dht22.readTemperature();
-}
+// float _read_sen_dht22_temp() {
+//   return _sen_dht22.readTemperature();
+// }
 
 /* (External Temperature) */
 float _read_sen_ds18b20_temp() {
@@ -71,12 +71,10 @@ float _read_sen_ds18b20_temp() {
   }
 
   if ( OneWire::crc8( addr, 7) != addr[7]) {
-      Serial.println(F("CRC is not valid!"));
       return -1000;
   }
 
   if ( addr[0] != 0x10 && addr[0] != 0x28) {
-      Serial.print(F("Device is not recognized"));
       return -1000;
   }
 
@@ -106,35 +104,37 @@ float _read_sen_ds18b20_temp() {
 }
 
 // Pressure Readings
+// Unit: pascals (Pa)
 
-float _read_sen_bmp280_q() {
-    return _sen_bmp280.readPressure() / 3386;
+uint32_t _read_sen_bmp280_pressure() {
+    return (uint32_t) _sen_bmp280.readPressure();
 }
 
-float _read_sen_mpl3115a2_q() {
-    return _sen_mpl3115a2.getPressure();
+uint32_t _read_sen_mpl3115a2_pressure() {
+    return (uint32_t) _sen_mpl3115a2.getPressure();
 }
 
-float _read_sen_bme280_q() {
-    return _sen_bme280.readPressure() / 3386;
+uint32_t _read_sen_bme280_pressure() {
+    return (uint32_t) _sen_bme280.readPressure();
 }
 
 // Humidity Readings
-float _read_sen_bme280_rhumidity() {
-    return _sen_bme280.readHumidity();
+// Unit: 0-100 percent
+uint8_t _read_sen_bme280_rhumidity() {
+    return (uint8_t) _sen_bme280.readHumidity();
 }
 
-float _read_sen_dht22_rhumidity() {
-    return _sen_dht22.readHumidity();
-}
+// uint8_t _read_sen_dht22_rhumidity() {
+//     return (uint8_t) _sen_dht22.readHumidity();
+// }
 
 
 // INA260 Battery Monitor
 
-float _read_sen_ina260_voltage() {
-    return _sen_ina260.readBusVoltage();
+uint16_t _read_sen_ina260_voltage() {
+    return (uint16_t) ((_sen_ina260.readBusVoltage() / 1000.0) * 100);
 }
 
-float _read_sen_ina260_current() {
-    return _sen_ina260.readCurrent();
+uint32_t _read_sen_ina260_current() {
+    return (uint32_t) (_sen_ina260.readCurrent() * 100);
 }

@@ -16,18 +16,18 @@
 
     // Pressure Readings
 
-    float _read_sen_bmp280_q();
-    float _read_sen_mpl3115a2_q();
-    float _read_sen_bme280_q();
+    uint32_t _read_sen_bmp280_pressure();
+    uint32_t _read_sen_mpl3115a2_pressure();
+    uint32_t _read_sen_bme280_pressure();
 
     // Humidity Readings
 
-    float _read_sen_bme280_rhumidity();
-    float _read_sen_dht22_rhumidity();
+    uint8_t _read_sen_bme280_rhumidity();
+    uint8_t _read_sen_dht22_rhumidity();
 
     // Battery Monitor
 
-    float _read_sen_ina219_voltage();
-    float _read_sen_ina219_current();
+    uint16_t _read_sen_ina260_voltage();
+    uint32_t _read_sen_ina260_current();
 
 #endif SENSOR_SYSTEM_H

@@ -3,6 +3,9 @@
 
     // Define any hardware pins or types below:
     // No value should change here.
+
+    // AVR328p PORTD:
+    
     #define _HW_PIN_EXTERNAL_TEMPERATURE_DATA       2
     #define _HW_PIN_IRIDIUM_MODEM_SLEEP             3
     // Endurance status LED
@@ -11,6 +14,9 @@
     #define _HW_PIN_DHT22_SENSOR_DATA               6
     // Iridium Modem UART
     #define _HW_PIN_IRIDIUM_MODEM_RECEIVE           7
+
+    // AVR328p PORTB:
+
     #define _HW_PIN_IRDIUM_MODEM_TRANSMIT           8
     // Signal that will flash on/off at a rate of 1Hz, meant for strobe lighting.
     #define _HW_PIN_VISIBILITY_STROBE_LED           9

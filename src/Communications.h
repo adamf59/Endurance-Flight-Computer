@@ -17,7 +17,7 @@
 
     void read_iridium_buffer();
 
-    bool transmit_outbound();
+    uint8_t transmit_outbound();
 
     #ifndef FLIGHT_MODE
         void gm_check_groundlink();

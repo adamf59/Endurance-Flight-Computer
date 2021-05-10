@@ -24,11 +24,9 @@ int main() {
     // Initialize communications and iridium modem
     _com_init();
 
-    // Initialize IO    
-    pinMode(_HW_PIN_STATUS_INDICATOR_LED, OUTPUT);
-    // pinMode(_HW_PIN_BALLAST_TRIGGER, OUTPUT);
-    pinMode(_HW_PIN_IRIDIUM_MODEM_SLEEP, OUTPUT);
-    pinMode(_HW_PIN_VISIBILITY_STROBE_LED, OUTPUT);
+    // Initialize IO Data Direction Registers
+    DDRD |= 0b00101000;
+    DDRB |= 0b00100010; // starts at pin 8
     
     // Perform Crash Check
     // Crash byte stored at address 0, and is SET at 0xFF, CLEAR at 0x00.
@@ -52,27 +50,12 @@ int main() {
     // Perform startup system test
     system_health_check();
 
-#ifndef FLIGHT_MODE
-    // LED Indications in Ground Mode
-    for (int i = 0; i < 5; i++) {
-        digitalWrite(_HW_PIN_STATUS_INDICATOR_LED, true);
-        digitalWrite(_HW_PIN_VISIBILITY_STROBE_LED, true);
-        delay(150);
-        digitalWrite(_HW_PIN_STATUS_INDICATOR_LED, false);
-        digitalWrite(_HW_PIN_VISIBILITY_STROBE_LED, false);
-        delay(150);
-    }
-#endif
-
     // Enable Strobes
     set_strobes(true);
 
     // Finally, enter the flight loop, which shouldn't ever really end.
 
     while (1) {
-        // set_strobes(false);
-        // delay(2000);
-        // set_strobes(true);
         flight_loop();
     }
 
@@ -88,6 +71,7 @@ void system_health_check() {
     // Check iridium modem connection:
 
     FLIGHT_DATA::set_hardware_bf_bit(0, check_iridium_ready());
+    FLIGHT_DATA::set_hardware_bf_bit(7, 1);
 
     // Send a test transmission to iridium modem
 
@@ -95,17 +79,12 @@ void system_health_check() {
 
     // Test sensors, compare results
 
-
-    Serial.print(FLIGHT_DATA::hardware_status_bitfield, BIN);
-    Serial.print("\nDSI8B20 Temperature:");
-    Serial.println(_read_sen_dht22_temp());
-
 }
 
-system_state fcpu_lifecycle_state = STARTUP;
-bool iridum_modem_ready = false;
-bool sensor_system_ready = false;
-long iridium_modem_startup_time = 0L;
+// system_state fcpu_lifecycle_state = STARTUP;
+// bool iridum_modem_ready = false;
+// bool sensor_system_ready = false;
+// long iridium_modem_startup_time = 0L;
 
 /**
  * Run continuously during normal flight. Performs
@@ -118,9 +97,30 @@ long iridium_modem_startup_time = 0L;
  */
 void flight_loop() {
 
-    gm_check_groundlink();
-    delay(500);
+    collect_data_for_tx();
+    // transmit_outbound(1);
+    // gm_check_groundlink();
 
+    do {
+        uint8_t tx_status = 0;
+        for (int i = 0; i < 3; i++) {
+            tx_status = transmit_outbound();
+            if (tx_status != 0) break;
+        }
+
+        if (tx_status == 2) {
+            // read data from modem
+            send_modem_command("AT+SBDRB\r", 100);
+            memcpy(FLIGHT_DATA::inbound_data, &FLIGHT_DATA::iridiumRecieveBufferData[3], 50);
+            process_inbound_data();
+        } else {
+            FLIGHT_DATA::force_transmission = 0; // If no data is waiting, then obviously we don't need to transmit again.
+        }
+
+    } while(FLIGHT_DATA::force_transmission);
+
+    delay(1000);
+    
 // // #ifndef FLIGHT_MODE
 // //     // Run GroundLink checks
 // //     gm_check_groundlink();    
@@ -142,9 +142,9 @@ void flight_loop() {
 //                 // Serial.println(_read_sen_mpl3115a2_temp());
 //                 // Serial.println(_read_sen_dht22_temp());
 //                 // Serial.println(_read_sen_ds18b20_temp());
-//                 // Serial.println(_read_sen_bme280_q());
-//                 // Serial.println(_read_sen_bmp280_q());
-//                 // Serial.println(_read_sen_mpl3115a2_q());
+//                 // Serial.println(_read_sen_bme280_pressure());
+//                 // Serial.println(_read_sen_bmp280_pressure());
+//                 // Serial.println(_read_sen_mpl3115a2_pressure());
 
 //                 delay(1200);    // wait a bit to retake measurements (so we're not spamming the sensor)
 //                 sensor_system_ready = true;     // (Development Only)
@@ -175,10 +175,10 @@ void flight_loop() {
 //             // (int)(_read_sen_dht22_temp() * 100),
 //             // (int)(_read_sen_ds18b20_temp() * 100),
 
-//             // (int)(_read_sen_bmp280_q() * 100),
-//             // // (int)(_read_sen_bme280_q() * 100),
+//             // (int)(_read_sen_bmp280_pressure() * 100),
+//             // // (int)(_read_sen_bme280_pressure() * 100),
 //             // 0,
-//             // (int)(_read_sen_mpl3115a2_q() * 100),
+//             // (int)(_read_sen_mpl3115a2_pressure() * 100),
 
 //             // // (int)_read_sen_bme280_rhumidity(),
 //             // 0,
@@ -229,14 +229,15 @@ void flight_loop() {
 
 void set_strobes(bool state) {
     if(state) {
-        // Strobe LED Setup for 1Hz Flash, 10% Duty Cycle
+        // Strobe LED Setup for 1Hz Flash, ~20% Duty Cycle
+        // We're mandated anywhere between 40 and 120 flashes per minute by FAA, so 1Hz is OK.
         TCCR1A = _BV(COM1A1) | _BV(WGM11);                
         TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS12);     
         ICR1 = 62499;                                     
-        OCR1A = 3000;   // Se   t the duty-cycle to 10%: 62499 / 10 = 6249
+        OCR1A = 3000;   // Se   t the duty-cycle to 10%: 62499 / 20 ~= 3000
         FLIGHT_DATA::strobe_light_status = 1;
     } else {
-        digitalWrite(_HW_PIN_VISIBILITY_STROBE_LED, LOW);
+        PORTB &= 0b11111101;
         FLIGHT_DATA::strobe_light_status = 0;
     }
 }
