@@ -22,7 +22,6 @@ OneWire _sen_ds18b20(_HW_PIN_EXTERNAL_TEMPERATURE_DATA);
 void init_sensor_system() {
 
     FLIGHT_DATA::set_hardware_bf_bit(3, _sen_bme280.begin());
-
     FLIGHT_DATA::set_hardware_bf_bit(5, _sen_bmp280.begin());
 
     FLIGHT_DATA::set_hardware_bf_bit(6, _sen_mpl3115a2.begin());
@@ -30,7 +29,7 @@ void init_sensor_system() {
     FLIGHT_DATA::set_hardware_bf_bit(4, _sen_ina260.begin());
 
     // _sen_dht22.begin();
-    //FLIGHT_DATA::set_hardware_bf_bit(2, !isnan(_read_sen_dht22_temp()));
+    // FLIGHT_DATA::set_hardware_bf_bit(2, !isnan(_read_sen_dht22_temp()));
     
     FLIGHT_DATA::set_hardware_bf_bit(1, !isnan(_read_sen_ds18b20_temp()));    
 

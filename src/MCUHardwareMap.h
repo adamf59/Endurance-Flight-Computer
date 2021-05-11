@@ -23,8 +23,7 @@
     // BME 280 Chip Select for SPI
     #define _HW_PIN_BME280_CS                       10
     // Flight Termination System (FTS) Channels
-    #define _HW_PIN_FLIGHT_TERMINATION_SYSTEM_CH_A  11
-    #define _HW_PIN_FLIGHT_TERMINATION_SYSTEM_CH_B  12
+    #define _HW_PIN_FLIGHT_TERMINATION_SYSTEM_CH_AB  4
     // Signal wire for ballast pump
     #define _HW_PIN_BALLAST_TRIGGER                 13
 

@@ -43,14 +43,14 @@ void collect_data_for_tx() {
     uint32_t bmp280_pressure_measurement = _read_sen_bmp280_pressure();
     uint32_t mpl3115a2_pressure_measurement = _read_sen_mpl3115a2_pressure();
     // TODO use these for the ballast computation
-    uint32_t current_altitude = compute_altitude(((bme280_pressure_measurement + bmp280_pressure_measurement + mpl3115a2_pressure_measurement) / 3));
+    // uint32_t current_altitude = compute_altitude(((bme280_pressure_measurement + bmp280_pressure_measurement + mpl3115a2_pressure_measurement) / 3));
     uint32_t current_time = millis();
 
     // Compute vertical speed
-    uint16_t vertical_speed = (uint32_t) ((float) current_altitude - (float) previous_altitude) / ((current_time - previous_altitude_measurement_time) / 60000); // feet per minute
+    // uint16_t vertical_speed = (uint32_t) ((float) current_altitude - (float) previous_altitude) / ((current_time - previous_altitude_measurement_time) / 60000); // feet per minute
 
     // shift the altitude memory
-    previous_altitude = current_altitude;
+    // previous_altitude = current_altitude;
     
     //Collect Power System
     uint16_t ina260_voltage_measuremnet = _read_sen_ina260_voltage();
@@ -212,7 +212,16 @@ void process_inbound_data() {
 
             sea_level_temperature = (inbound_data[i + 2] << 8) | inbound_data[i + 1];
             i += 2;
+        } else if (inbound_data[i] == 0x0E) {
 
+            // Collect the most recent data for dumping
+            collect_data_for_tx();
+            
+            // Dump Flight Data to GroundLink
+            for (uint8_t i = 0; i < 50; i++) {
+                Serial.write(FLIGHT_DATA::outbound_data[i]);
+            }
+            
         } else if (inbound_data[i] == 0xF8) { // Emergency Commands Below
 
             // Restart Flight Computer
@@ -317,8 +326,8 @@ uint8_t transmit_outbound() {
 
     // fetch the data into the buffer
     read_iridium_buffer();
-    Serial.println("Data:");
-    Serial.println(iridiumRecieveBufferData);   // debug print
+    // Serial.println("Data:");
+    // Serial.println(iridiumRecieveBufferData);   // debug print
     uint8_t data_variable = 0;
     uint8_t data_position = 0;
     char data[8] = { 0 };
@@ -356,6 +365,8 @@ uint8_t transmit_outbound() {
 }
 
 void run_iridium_tx_rx_sequence() {
+
+    collect_data_for_tx();
     
     do {
         uint8_t tx_status = 0;

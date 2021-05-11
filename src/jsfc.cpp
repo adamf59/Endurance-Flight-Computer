@@ -26,20 +26,20 @@ int main() {
 
     // Initialize IO Data Direction Registers
     DDRD |= 0b00101000;
-    DDRB |= 0b00100010; // starts at pin 8
+    DDRB |= 0b00000010; // starts at pin 8
+
+
     
     // Perform Crash Check
     // Crash byte stored at address 0, and is SET at 0xFF, CLEAR at 0x00.
 
-#ifdef FLIGHT_MODE
-        if (EEPROM.read(0x00) == 0xFF) {
+    // if (EEPROM.read(0x00) == 0xFF) {
             
-            // TODO crash logic goes here.
+    //         // TODO crash logic goes here.
 
-        } else {
-            EEPROM.write(0x00, 0xFF);
-        }
-#endif
+    // } else {
+    //         //EEPROM.write(0x00, 0xFF);
+    // }
     
     // Perform Flight Data initialization
     memset(FLIGHT_DATA::inbound_data, 0, sizeof(FLIGHT_DATA::inbound_data));
@@ -48,15 +48,19 @@ int main() {
     init_sensor_system();
 
     // Perform startup system test
-    system_health_check();
+    //system_health_check();
 
     // Enable Strobes
     set_strobes(true);
+
+    // Set the Pump and FTS to low.
+    // PORTB &= 0b11000111;
 
     // Finally, enter the flight loop, which shouldn't ever really end.
 
     while (1) {
         flight_loop();
+
     }
 
     return 0;
@@ -111,26 +115,26 @@ void flight_loop() {
                 Serial.write(FLIGHT_DATA::outbound_data[i]);
             }
         }
-
-    } else if (FLIGHT_DATA::system_mode == 1) {
-
-        // CHECK SCHEDULERS:
-        if (millis() >= FLIGHT_DATA::iridium_transmission_scheduled_time) {
-            FLIGHT_DATA::iridium_transmission_scheduled_time = millis() + (FLIGHT_DATA::iridium_transmit_interval * 1000); // set next target time
-
-            // Run Transmission Sequence
-            run_iridium_tx_rx_sequence();
-        }
-
-        if (millis() >= FLIGHT_DATA::ballast_ap_scheduled_time) {
-            FLIGHT_DATA::ballast_ap_scheduled_time = millis() + (FLIGHT_DATA::ballast_ap_interval * 1000); // set next target time
-
-            // TODO run ballast run sequence
-        }
-
-        
-        
     }
+    // } else if (FLIGHT_DATA::system_mode == 1) {
+
+    //     // CHECK SCHEDULERS:
+    //     if (millis() >= FLIGHT_DATA::iridium_transmission_scheduled_time) {
+    //         FLIGHT_DATA::iridium_transmission_scheduled_time = millis() + (FLIGHT_DATA::iridium_transmit_interval * 1000); // set next target time
+
+    //         // Run Transmission Sequence
+    //         run_iridium_tx_rx_sequence();
+    //     }
+
+    //     if (millis() >= FLIGHT_DATA::ballast_ap_scheduled_time) {
+    //         FLIGHT_DATA::ballast_ap_scheduled_time = millis() + (FLIGHT_DATA::ballast_ap_interval * 1000); // set next target time
+
+    //         // TODO run ballast run sequence
+    //     }
+
+        
+        
+    // }
     
 // // #ifndef FLIGHT_MODE
 // //     // Run GroundLink checks
@@ -247,8 +251,10 @@ void set_strobes(bool state) {
         ICR1 = 62499;                                     
         OCR1A = 3000;   // Se   t the duty-cycle to 10%: 62499 / 20 ~= 3000
         FLIGHT_DATA::strobe_light_status = 1;
+
     } else {
-        PORTB &= 0b11111101;
+
+        digitalWrite(_HW_PIN_VISIBILITY_STROBE_LED, LOW);
         FLIGHT_DATA::strobe_light_status = 0;
     }
 }
