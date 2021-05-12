@@ -44,8 +44,16 @@
         extern uint32_t sea_level_pressure_pascals;
         extern uint16_t sea_level_temperature;
 
-        extern uint32_t previous_altitude;
-        extern uint32_t previous_altitude_measurement_time;
+        // Altitudes
+
+        extern uint32_t current_altitude;
+        extern uint8_t ballast_autopilot_coefficient;
+        extern uint16_t ballast_autopilot_drop_time;
+
+        extern uint16_t autopilot_lower_alitude_threshold;
+        extern uint32_t autopilot_upper_altitude_threshold;
+
+        extern uint16_t altitude_zone_constants[7];
 
         void set_hardware_bf_bit(int bit, bool to);
 

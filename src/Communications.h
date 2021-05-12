@@ -9,7 +9,7 @@
     void collect_data_for_tx();
     void process_inbound_data();
     void compute_outbound_checksum();
-    char* send_modem_command(char transmission[], int read_timeout);
+    char* send_modem_command(char transmission[], int read_timeout, int read_all);
     void const flush_iridium_recieve_buffer();
     void const flush_iridium_serial_buffer();
 
@@ -17,7 +17,7 @@
 
     bool check_iridium_ready();
 
-    void read_iridium_buffer();
+    void read_iridium_buffer(int);
 
     uint8_t transmit_outbound();
 

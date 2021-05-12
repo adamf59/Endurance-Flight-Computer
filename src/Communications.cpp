@@ -44,16 +44,10 @@ void collect_data_for_tx() {
     uint32_t bme280_pressure_measurement =  _read_sen_bme280_pressure();
     uint32_t bmp280_pressure_measurement = _read_sen_bmp280_pressure();
     uint32_t mpl3115a2_pressure_measurement = _read_sen_mpl3115a2_pressure();
-    // TODO use these for the ballast computation
-    // uint32_t current_altitude = compute_altitude(((bme280_pressure_measurement + bmp280_pressure_measurement + mpl3115a2_pressure_measurement) / 3));
-    uint32_t current_time = millis();
 
-    // Compute vertical speed
-    // uint16_t vertical_speed = (uint32_t) ((float) current_altitude - (float) previous_altitude) / ((current_time - previous_altitude_measurement_time) / 60000); // feet per minute
+    // Compute the current Altitude
+    current_altitude = compute_altitude(((bme280_pressure_measurement + bmp280_pressure_measurement + mpl3115a2_pressure_measurement) / 3));
 
-    // shift the altitude memory
-    // previous_altitude = current_altitude;
-    
     //Collect Power System
     uint16_t ina260_voltage_measuremnet = _read_sen_ina260_voltage();
     
@@ -115,10 +109,13 @@ void collect_data_for_tx() {
     outbound_data[34] = (uint8_t) ina260_current_measurement & 0xFF;
     outbound_data[35] = (uint8_t) (ina260_current_measurement >> 8) & 0xFF;
     outbound_data[36] = (uint8_t) (ina260_current_measurement >> 16) & 0xFF;
-
+    
 
     outbound_data[39] = strobe_light_status;
     outbound_data[40] = iridium_mt_queued;
+
+    outbound_data[42] = (uint8_t) ballast_autopilot_drop_time & 0xFF;
+    outbound_data[43] = (uint8_t) (ballast_autopilot_drop_time >> 8);
 
     outbound_data[47] = rx_check_num;
     outbound_data[49] = 0xBB;
@@ -180,18 +177,19 @@ void process_inbound_data() {
         } else if (inbound_data[i] == 0x05) {
 
             // Set Ballast Coefficient
+            ballast_autopilot_coefficient = inbound_data[i + 1];
             i += 1;
             
         } else if (inbound_data[i] == 0x06) {
 
             // Set Lower Altitude Threshold    
-            uint16_t autopilot_lower_alitude_theshold = (inbound_data[i + 2] << 8) | inbound_data[i + 1];
+            autopilot_lower_alitude_threshold = (inbound_data[i + 2] << 8) | inbound_data[i + 1];
             i += 2;
             
         } else if (inbound_data[i] == 0x07) {
 
             // Set Upper Altitude Threshold    
-            uint16_t autopilot_upper_alitude_theshold = (inbound_data[i + 2] << 8) | inbound_data[i + 1];
+            autopilot_upper_altitude_threshold = (inbound_data[i + 2] << 8) | inbound_data[i + 1];
             i += 2;
             
         } else if (inbound_data[i] == 0x08) {
@@ -209,6 +207,19 @@ void process_inbound_data() {
             
         } else if (inbound_data[i] == 0x0A) {
             
+            altitude_zone_constants[0] = inbound_data[i + 1];
+            altitude_zone_constants[1] = inbound_data[i + 2];
+            altitude_zone_constants[2] = inbound_data[i + 3];
+            altitude_zone_constants[3] = inbound_data[i + 4];
+            altitude_zone_constants[4] = inbound_data[i + 5];
+            altitude_zone_constants[5] = inbound_data[i + 6];
+            altitude_zone_constants[6] = inbound_data[i + 7];
+
+            for (int i = 0; i < 7; i++) {
+                Serial.println(altitude_zone_constants[i]);
+            } 
+
+            i += 7;            
         } else if (inbound_data[i] == 0x0B) {
 
             // Set RX Check Number
@@ -288,12 +299,12 @@ uint8_t transmit_outbound() {
     }
 
     // disable flow control
-    if (strcmp(send_modem_command("AT&K0\r", 50), "OK\r") == 0) {
+    if (strcmp(send_modem_command("AT&K0\r", 50, 0), "OK\r") == 0) {
         return 0;
     }
 
     // request transfer of binary data to ISU
-    if (strcmp(send_modem_command("AT+SBDWB=50\r", 50), "READY\r") == 0) {
+    if (strcmp(send_modem_command("AT+SBDWB=50\r", 50, 0), "READY\r") == 0) {
         return 0;
     }
     /*
@@ -319,7 +330,7 @@ uint8_t transmit_outbound() {
 
     // now check to see that the ISU liked the data (should be 0OK)
     delay(50);
-    read_iridium_buffer();
+    read_iridium_buffer(0);
     if (!strcmp(iridiumRecieveBufferData, "0OK\r")) {
         return 0;
     }
@@ -339,7 +350,7 @@ uint8_t transmit_outbound() {
     }
 
     // fetch the data into the buffer
-    read_iridium_buffer();
+    read_iridium_buffer(0);
     // Serial.println("Data:");
     // Serial.println(iridiumRecieveBufferData);   // debug print
     uint8_t data_variable = 0;
@@ -392,17 +403,23 @@ void run_iridium_tx_rx_sequence() {
         uint8_t tx_status = 0;
         for (int i = 0; i < 3; i++) {
             tx_status = transmit_outbound();
+            Serial.println("Response");
+            Serial.println(tx_status);
             if (tx_status != 0) break;
         }
         last_transmission_status = tx_status;
 
         if (tx_status == 2) {
+            Serial.println("DATA AVAILABLE FROM IRIDIUM");
             // read data from modem
-            send_modem_command("AT+SBDRB\r", 100);
-            memcpy(FLIGHT_DATA::inbound_data, &FLIGHT_DATA::iridiumRecieveBufferData[3], 50);
+            send_modem_command("AT+SBDRB\r", 600, 1);
+            uint8_t messageLength = FLIGHT_DATA::iridiumRecieveBufferData[1];
+
+            memcpy(FLIGHT_DATA::inbound_data, &FLIGHT_DATA::iridiumRecieveBufferData[2], messageLength);
             process_inbound_data();
         } else {
             FLIGHT_DATA::force_transmission = 0; // If no data is waiting, then obviously we don't need to transmit again.
+            break;
         }
 
     } while(FLIGHT_DATA::force_transmission);
@@ -424,13 +441,13 @@ void const flush_iridium_serial_buffer() {
 }
 
 bool check_iridium_ready() {
-    return strcmp(send_modem_command("AT\r", 50), "OK") == 0;
+    return strcmp(send_modem_command("AT\r", 50, 0), "OK") == 0;
 }
 
 /**
  * Sends a message to the iridium modem, and stores the response into iridiumRecieveBufferData
  */
-char* send_modem_command(char transmission[], int read_timeout) {
+char* send_modem_command(char transmission[], int read_timeout, int read_all) {
 
     // Clear the buffers
     flush_iridium_recieve_buffer();
@@ -443,13 +460,13 @@ char* send_modem_command(char transmission[], int read_timeout) {
     // TODO there may be a better way to do this.
     delay(read_timeout);
 
-    read_iridium_buffer();
+    read_iridium_buffer(read_all);
 
     return iridiumRecieveBufferData;
     
 }
 
-void read_iridium_buffer() {
+void read_iridium_buffer(int read_all) {
 
     int writeIdx = 0;
     // Read any data from the iridium modem
@@ -457,7 +474,11 @@ void read_iridium_buffer() {
         if (writeIdx == sizeof(iridiumRecieveBufferData)) break;   // prevent buffer overflows
         char inChar = iridiumModem.read();
         // only accepting ASCII letters, numbers, etc. (i.e. no control characters like \0, NL, CR, etc.)
-        if (inChar >= 32 && inChar <= 122)  iridiumRecieveBufferData[writeIdx++] = inChar;
+        if(read_all) {
+            iridiumRecieveBufferData[writeIdx++] = inChar;
+        } else {
+            if (inChar >= 32 && inChar <= 122)  iridiumRecieveBufferData[writeIdx++] = inChar;
+        }
     }
 
 }

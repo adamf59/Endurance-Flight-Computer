@@ -29,10 +29,11 @@
     #define _HW_PIN_BALLAST_TRIGGER                 4
 
     
-    #define _HW_TYPE_DHT_22_SENSOR_TYPE          DHT22
+    #define _HW_TYPE_DHT_22_SENSOR_TYPE                 DHT22
 
-    #define EEPROM_SYSTEM_MODE_ADDR                 0x00
-    
-    #define BALLAST_AP_ACTIVATION_ALTITUDE          20000
+    #define EEPROM_SYSTEM_MODE_ADDR                     0x00
+
+    #define BALLAST_AP_ACTIVATION_ALTITUDE              20000
+    #define EEPROM_BALLAST_AUTOPILOT_ACTIVATION_ADDR    0x02
 
 #endif

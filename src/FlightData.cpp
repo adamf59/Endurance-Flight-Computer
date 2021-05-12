@@ -61,11 +61,16 @@ namespace FLIGHT_DATA {
     // use 288.15 K for standard atmospheric model
     extern uint16_t sea_level_temperature = 288.15;
 
-    extern uint32_t previous_altitude = 500;
-    // WARNING: Set this to altitude of your launch site in feet.
+    extern uint32_t current_altitude = 500; // WARNING: Set this to altitude of your launch site in feet.
+    extern uint8_t ballast_autopilot_coefficient = 1;
+    extern uint16_t ballast_autopilot_drop_time = 0;
 
     extern uint32_t previous_altitude_measurement_time = 0;
 
+    extern uint16_t autopilot_lower_alitude_threshold = 0;
+    extern uint32_t autopilot_upper_altitude_threshold = 0;
+
+    extern uint16_t altitude_zone_constants[7] = {10, 8, 6, 4, 2, 0, 0};
 
     void set_hardware_bf_bit(int bit, bool to) {
         if(to) {

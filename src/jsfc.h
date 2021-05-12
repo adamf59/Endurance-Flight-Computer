@@ -6,5 +6,7 @@
     void flight_loop();
 
     void set_strobes(bool state);
+
+    void run_ballast_evaluation();
     
 #endif

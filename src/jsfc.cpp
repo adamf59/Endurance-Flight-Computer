@@ -126,9 +126,12 @@ void flight_loop() {
         if (millis() >= FLIGHT_DATA::iridium_transmission_scheduled_time) {
             FLIGHT_DATA::iridium_transmission_scheduled_time = FLIGHT_DATA::iridium_transmission_scheduled_time + ((uint32_t) FLIGHT_DATA::iridium_transmit_interval * 1000); // set next target time
 
-            // TODO run ballast run sequence
+            // Run Ballast Sequence
+            run_ballast_evaluation();
+
             // Run Transmission Sequence
             run_iridium_tx_rx_sequence();
+
         }
 
         // if (millis() >= FLIGHT_DATA::ballast_ap_scheduled_time) {
@@ -259,4 +262,40 @@ void set_strobes(bool state) {
         digitalWrite(_HW_PIN_VISIBILITY_STROBE_LED, LOW);
         FLIGHT_DATA::strobe_light_status = 0;
     }
+}
+
+void run_ballast_evaluation() {
+
+    if (!FLIGHT_DATA::ballast_autopilot_status)  return;
+    // Check Activation Parameter
+    if (!EEPROM.read(EEPROM_BALLAST_AUTOPILOT_ACTIVATION_ADDR)) {
+        if (FLIGHT_DATA::current_altitude >= BALLAST_AP_ACTIVATION_ALTITUDE) {
+            EEPROM.write(EEPROM_BALLAST_AUTOPILOT_ACTIVATION_ADDR, 0x01);       // Auto-Activate the Autopilot
+        } else  {
+            return;
+        }
+    }
+
+    uint32_t altitude_divider = (FLIGHT_DATA::autopilot_upper_altitude_threshold - FLIGHT_DATA::autopilot_lower_alitude_threshold) / 5;
+    FLIGHT_DATA::ballast_autopilot_drop_time = 0;
+
+    if (FLIGHT_DATA::current_altitude > FLIGHT_DATA::autopilot_upper_altitude_threshold) {
+        FLIGHT_DATA::ballast_autopilot_drop_time = FLIGHT_DATA::altitude_zone_constants[6] * FLIGHT_DATA::ballast_autopilot_coefficient;
+    } else {
+        for (int i = 0; i < 6; i++) {
+
+            if (FLIGHT_DATA::current_altitude <= (FLIGHT_DATA::autopilot_lower_alitude_threshold + (altitude_divider * i))) {
+                FLIGHT_DATA::ballast_autopilot_drop_time = FLIGHT_DATA::altitude_zone_constants[i] * FLIGHT_DATA::ballast_autopilot_coefficient;
+                break;
+            }
+
+        }
+    }
+
+    // Now drop ballast.
+    digitalWrite(_HW_PIN_BALLAST_TRIGGER, HIGH);
+    delay(FLIGHT_DATA::ballast_autopilot_drop_time * 1000);
+    digitalWrite(_HW_PIN_BALLAST_TRIGGER, LOW);
+
+
 }
