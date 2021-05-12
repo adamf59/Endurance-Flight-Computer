@@ -22,8 +22,8 @@
 
         // Schedulers
 
-        extern uint16_t ballast_ap_interval;
-        extern uint32_t ballast_ap_scheduled_time;
+        // extern uint16_t ballast_ap_interval;
+        // extern uint32_t ballast_ap_scheduled_time;
 
         extern uint16_t iridium_transmit_interval;
         extern uint32_t iridium_transmission_scheduled_time;

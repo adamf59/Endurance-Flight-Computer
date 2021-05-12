@@ -3,7 +3,7 @@
 BOARD_TAG   = nano
 BOARD_SUB   = atmega328
 ARDUINO_DIR = /Applications/Arduino.app/Contents/Java
-MONITOR_PORT  = /dev/cu.usbserial-14410
+MONITOR_PORT  = /dev/cu.usbserial-14230
 AVRDUDE_ARD_BAUDRATE = 115200
 MONITOR_BAUDRATE = 9600
 ARDUINO_LIBS = SoftwareSerial SPI Wire EEPROM AdafruitSensor AdafruitBUSIO AdafruitBME AdafruitBMP AdafruitMPL AdafruitINA SensorDHT OneWire

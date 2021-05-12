@@ -7,7 +7,8 @@ namespace FLIGHT_DATA {
 
     /**
      * System Mode 0 = Ground Mode (instant command response w/ rapid sensor polling)
-     * System Mode 1 = Flight Mode (Regular interval sensor polling w/ timed iridium transmissions)
+     * System Mode 1 = Terminal Countdown (4 minute interval transmissions, groundlink disconnected).
+     * System Mode 2 = Flight Mode (Regular interval sensor polling w/ timed iridium transmissions, ballast AP, schedulers)
      */
     extern uint8_t system_mode = 0;
 
@@ -21,10 +22,10 @@ namespace FLIGHT_DATA {
 
     // Schedulers
 
-        extern uint16_t ballast_ap_interval = 420;      // Default: 7 minutes
-        extern uint32_t ballast_ap_scheduled_time = 0;  // Default 
+        // extern uint16_t ballast_ap_interval = 90;      // Default: 7 minutes
+        // extern uint32_t ballast_ap_scheduled_time = 0; 
 
-        extern uint16_t iridium_transmit_interval = 420;
+        extern uint16_t iridium_transmit_interval = 120; // Default: 4 minutes  
         extern uint32_t iridium_transmission_scheduled_time = 0;
 
 

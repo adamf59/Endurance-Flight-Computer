@@ -131,7 +131,8 @@ uint8_t _read_sen_bme280_rhumidity() {
 // INA260 Battery Monitor
 
 uint16_t _read_sen_ina260_voltage() {
-    return (uint16_t) ((_sen_ina260.readBusVoltage() / 1000.0) * 100);
+    
+    return (uint16_t) ((_sen_ina260.readBusVoltage() / 10.0));
 }
 
 uint32_t _read_sen_ina260_current() {

@@ -20,27 +20,22 @@ int main() {
 
     // Initialize the AVR Board:
     init();
+    // EEPROM.write(EEPROM_SYSTEM_MODE_ADDR, 0x00);
+    // Set System Mode from EEPROM.
+    // Mode byte stored at address 0.
+    FLIGHT_DATA::system_mode = EEPROM.read(EEPROM_SYSTEM_MODE_ADDR);
 
+    
     // Initialize communications and iridium modem
     _com_init();
 
     // Initialize IO Data Direction Registers
-    DDRD |= 0b00101000;
+    DDRD |= 0b00111000;
     DDRB |= 0b00000010; // starts at pin 8
+    pinMode(_HW_PIN_FLIGHT_TERMINATION_SYSTEM_CH_A, OUTPUT);
+    pinMode(_HW_PIN_FLIGHT_TERMINATION_SYSTEM_CH_B, OUTPUT);
 
 
-    
-    // Perform Crash Check
-    // Crash byte stored at address 0, and is SET at 0xFF, CLEAR at 0x00.
-
-    // if (EEPROM.read(0x00) == 0xFF) {
-            
-    //         // TODO crash logic goes here.
-
-    // } else {
-    //         //EEPROM.write(0x00, 0xFF);
-    // }
-    
     // Perform Flight Data initialization
     memset(FLIGHT_DATA::inbound_data, 0, sizeof(FLIGHT_DATA::inbound_data));
 
@@ -55,6 +50,9 @@ int main() {
 
     // Set the Pump and FTS to low.
     // PORTB &= 0b11000111;
+
+    // Put Iridium to Sleep Mode
+    digitalWrite(_HW_PIN_IRIDIUM_MODEM_SLEEP, LOW);
 
     // Finally, enter the flight loop, which shouldn't ever really end.
 
@@ -89,21 +87,13 @@ void system_health_check() {
 // bool sensor_system_ready = false;
 // long iridium_modem_startup_time = 0L;
 
-/**
- * Run continuously during normal flight. Performs
- * 1. Iridium Modem Startup Sequence
- * 2. Sensor Polling and Data Collection
- * 3. Data parsing and flight computer action
- * 4. Data Transmission and Receiving
- * 5. Iridium Modem Sleep Sequence
- * 6. Transition to low power mode
- */
 void flight_loop() {
 
     // Run Data Collector
     collect_data_for_tx();
 
     if (FLIGHT_DATA::system_mode == 0) {
+        // GROUND MODE
 
         // Check Groundlink for commands
         gm_check_groundlink();
@@ -115,26 +105,38 @@ void flight_loop() {
                 Serial.write(FLIGHT_DATA::outbound_data[i]);
             }
         }
+
+    } else if (FLIGHT_DATA::system_mode == 1) {
+        // TERMINAL COUNT MODE
+        if (millis() >= FLIGHT_DATA::iridium_transmission_scheduled_time) {
+            FLIGHT_DATA::iridium_transmission_scheduled_time = FLIGHT_DATA::iridium_transmission_scheduled_time + ((uint32_t) FLIGHT_DATA::iridium_transmit_interval * 1000); // set next target time
+            // Trigger the pump briefly to signal operation.
+            digitalWrite(_HW_PIN_BALLAST_TRIGGER, HIGH);
+            delay(2000);
+            digitalWrite(_HW_PIN_BALLAST_TRIGGER, LOW);
+
+            // Run Transmission Sequence
+            run_iridium_tx_rx_sequence();
+        }
+        
+    } else if (FLIGHT_DATA::system_mode == 2) {
+        // FLIGHT MODE
+
+        // CHECK SCHEDULERS:
+        if (millis() >= FLIGHT_DATA::iridium_transmission_scheduled_time) {
+            FLIGHT_DATA::iridium_transmission_scheduled_time = FLIGHT_DATA::iridium_transmission_scheduled_time + ((uint32_t) FLIGHT_DATA::iridium_transmit_interval * 1000); // set next target time
+
+            // TODO run ballast run sequence
+            // Run Transmission Sequence
+            run_iridium_tx_rx_sequence();
+        }
+
+        // if (millis() >= FLIGHT_DATA::ballast_ap_scheduled_time) {
+        //     FLIGHT_DATA::ballast_ap_scheduled_time = FLIGHT_DATA::ballast_ap_scheduled_time + ((uint32_t) FLIGHT_DATA::ballast_ap_interval * 1000); // set next target time
+            
+        // }
+        
     }
-    // } else if (FLIGHT_DATA::system_mode == 1) {
-
-    //     // CHECK SCHEDULERS:
-    //     if (millis() >= FLIGHT_DATA::iridium_transmission_scheduled_time) {
-    //         FLIGHT_DATA::iridium_transmission_scheduled_time = millis() + (FLIGHT_DATA::iridium_transmit_interval * 1000); // set next target time
-
-    //         // Run Transmission Sequence
-    //         run_iridium_tx_rx_sequence();
-    //     }
-
-    //     if (millis() >= FLIGHT_DATA::ballast_ap_scheduled_time) {
-    //         FLIGHT_DATA::ballast_ap_scheduled_time = millis() + (FLIGHT_DATA::ballast_ap_interval * 1000); // set next target time
-
-    //         // TODO run ballast run sequence
-    //     }
-
-        
-        
-    // }
     
 // // #ifndef FLIGHT_MODE
 // //     // Run GroundLink checks

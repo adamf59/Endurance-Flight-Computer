@@ -4,6 +4,7 @@
 #include "FlightData.h"
 #include "jsfc.h"
 #include "SensorSystem.h"
+#include "EEPROM.h"
 
 #include <SoftwareSerial.h>
 
@@ -24,8 +25,9 @@ SoftwareSerial iridiumModem(_HW_PIN_IRIDIUM_MODEM_RECEIVE, _HW_PIN_IRDIUM_MODEM_
 
 void _com_init() {
     iridiumModem.begin(19200);
-    Serial.begin(19200);
-   // Serial.println(F("<ST_START>")); // Send "startup complete" to GL
+    if (system_mode == 0) {
+        Serial.begin(19200);
+    }
 }
 
 void collect_data_for_tx() {
@@ -54,6 +56,7 @@ void collect_data_for_tx() {
     
     //Collect Power System
     uint16_t ina260_voltage_measuremnet = _read_sen_ina260_voltage();
+    
     uint32_t ina260_current_measurement = _read_sen_ina260_current();
 
     // Structure the response packet:
@@ -134,21 +137,27 @@ void process_inbound_data() {
     
     // Valid packets have the start byte 0xAA at position 0.
     if (inbound_data[0] != 0xAA) return;
+    if (inbound_data[(inbound_data[1] + 1)] != 0xBB) return;
     
     for (int i = 2; i < inbound_data[1] + 2; i++) {
 
         if (inbound_data[i] == 0x01) {
+            // Set the Mode
+            system_mode = inbound_data[i + 1];
 
-            // Set Mode
+            // Prep for Set Mode
             if (inbound_data[i + 1] == 0x01) {
-                // set mode to ground_mode
-                system_mode = 0;
+                // Close GroundLink. It'll no longer be used.
+                Serial.end();
             } else if (inbound_data[i + 1] == 0x02) {
-                // set mode to terminal_count
-            } else if (inbound_data[i + 2] == 0x03) {
-                // set mode to flight
-                system_mode = 1;
+                collect_data_for_tx();
+                run_iridium_tx_rx_sequence();
+                
             }
+            
+            // Write the mode to the EEPROM in case we restart
+            EEPROM.write(EEPROM_SYSTEM_MODE_ADDR, system_mode);
+
             i += 1;
         } else if (inbound_data[i] == 0x02) {
 
@@ -165,7 +174,7 @@ void process_inbound_data() {
         } else if (inbound_data[i] == 0x04) {
 
             // Set Ballast Evaluation Period
-            ballast_ap_interval = (inbound_data[i + 2] << 8) | inbound_data[i + 1];
+            iridium_transmit_interval = (inbound_data[i + 2] << 8) | inbound_data[i + 1];
             i += 2;
             
         } else if (inbound_data[i] == 0x05) {
@@ -188,6 +197,9 @@ void process_inbound_data() {
         } else if (inbound_data[i] == 0x08) {
 
             // Manual Ballast Dispense
+            digitalWrite(_HW_PIN_BALLAST_TRIGGER, HIGH);
+            delay(inbound_data[i+1] * 1000);
+            digitalWrite(_HW_PIN_BALLAST_TRIGGER, LOW);
             i += 1;
             
         } else if (inbound_data[i] == 0x09) {
@@ -212,8 +224,8 @@ void process_inbound_data() {
 
             sea_level_temperature = (inbound_data[i + 2] << 8) | inbound_data[i + 1];
             i += 2;
-        } else if (inbound_data[i] == 0x0E) {
-
+        } else if (inbound_data[i] == 0x0E && system_mode == 0x00) {
+            // We only can use this command in ground mode, as serial is closed otherwise.
             // Collect the most recent data for dumping
             collect_data_for_tx();
             
@@ -242,9 +254,11 @@ void process_inbound_data() {
                          */
 
                         // rip
-                        PORTB |= 0b00011000;  // sets 11 and 12 HIGH
+                        digitalWrite(_HW_PIN_FLIGHT_TERMINATION_SYSTEM_CH_A, HIGH);
+                        digitalWrite(_HW_PIN_FLIGHT_TERMINATION_SYSTEM_CH_B, HIGH);
                         delay(8000);            // TODO we should not use delay().
-                        PORTB &= 0b11100111; // sets 11 and 12 LOW
+                        digitalWrite(_HW_PIN_FLIGHT_TERMINATION_SYSTEM_CH_A, LOW);
+                        digitalWrite(_HW_PIN_FLIGHT_TERMINATION_SYSTEM_CH_B, LOW);
                     }
                     i += 1;
             
@@ -366,7 +380,13 @@ uint8_t transmit_outbound() {
 
 void run_iridium_tx_rx_sequence() {
 
+    // Turn on the Iridium Modem
+    digitalWrite(_HW_PIN_IRIDIUM_MODEM_SLEEP, HIGH);
+
+    // Collect Data
     collect_data_for_tx();
+    // wait for iridium to be ready
+    while (!check_iridium_ready()) { delay(500); };
     
     do {
         uint8_t tx_status = 0;
@@ -386,6 +406,9 @@ void run_iridium_tx_rx_sequence() {
         }
 
     } while(FLIGHT_DATA::force_transmission);
+
+    // Put Iridium Modem back into Sleep Mode
+    digitalWrite(_HW_PIN_IRIDIUM_MODEM_SLEEP, LOW);
 
 }
 

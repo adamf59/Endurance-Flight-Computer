@@ -13,6 +13,7 @@
         "vector": "cpp",
         "istream": "cpp",
         "wiring_private.h": "c",
-        "io.h": "c"
+        "io.h": "c",
+        "ostream": "cpp"
     }
 }
